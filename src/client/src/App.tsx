@@ -11,6 +11,7 @@ import {
   DownloadIcon,
   SunIcon,
   MoonIcon,
+  FileTextIcon,
 } from "@radix-ui/react-icons";
 import mermaid from "mermaid";
 
@@ -19,20 +20,53 @@ mermaid.initialize({
   startOnLoad: false,
   theme: "default",
   securityLevel: "loose",
+  flowchart: {
+    useMaxWidth: true,
+    htmlLabels: true,
+  },
 });
 
 function App() {
-  const [diagram, setDiagram] = useState(`graph TD
-    A[Start] --> B{Is it working?}
-    B -->|Yes| C[Great!]
-    B -->|No| D[Debug]
-    D --> A
-    C --> E[End]`);
+  const [diagram, setDiagram] = useState(`graph TB
+    subgraph "MCP Server"
+        MCP[MCP Protocol Handler]
+        WS[WebSocket Server<br/>:3001/ws]
+        API[REST API<br/>:3001/api]
+        FS[Fastify Static<br/>Server]
+    end
+    
+    subgraph "React UI"
+        VITE[Vite Dev Server<br/>:5173]
+        APP[React App]
+        EDITOR[Editor Panel<br/>Mermaid Syntax]
+        PREVIEW[Preview Panel<br/>Rendered Diagram]
+        THEME[Dark/Light Toggle]
+    end
+    
+    subgraph "Claude Desktop"
+        CLAUDE[Claude App]
+        TOOL[MCP Tools]
+    end
+    
+    CLAUDE -->|stdio| MCP
+    TOOL -->|render_mermaid| MCP
+    APP -->|WebSocket| WS
+    APP -->|HTTP| API
+    VITE -->|Proxy| API
+    VITE -->|Proxy| WS
+    FS -->|Serves| APP
+    EDITOR -->|Auto-render| PREVIEW
+    THEME -->|Controls| PREVIEW
+    
+    style MCP fill:#e1f5fe
+    style APP fill:#f3e5f5
+    style CLAUDE fill:#fff3e0`);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [ws, setWs] = useState<WebSocket | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<any>(null);
 
   // WebSocket connection with auto-reconnect
   useEffect(() => {
@@ -88,6 +122,10 @@ function App() {
           startOnLoad: false,
           theme: isDarkMode ? "dark" : "default",
           securityLevel: "loose",
+          flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+          },
         });
 
         // Clear previous content
@@ -110,20 +148,6 @@ function App() {
     const timeoutId = setTimeout(renderDiagram, 500);
     return () => clearTimeout(timeoutId);
   }, [diagram, isDarkMode]);
-
-  const handleRender = () => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      setStatus("WebSocket not connected");
-      return;
-    }
-
-    ws.send(
-      JSON.stringify({
-        type: "render",
-        diagram: diagram,
-      }),
-    );
-  };
 
   const handleExport = () => {
     const svg = previewRef.current?.querySelector("svg");
@@ -156,48 +180,56 @@ function App() {
 
   return (
     <div className={`h-screen w-screen flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-background'}`}>
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
+        {isCollapsed && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              panelRef.current?.expand();
+            }}
+            className="absolute z-10"
+            style={{ top: '10px', left: '10px' }}
+            title="Show editor"
+          >
+            <FileTextIcon className="h-4 w-4" />
+          </Button>
+        )}
         <ResizablePanel
+          ref={panelRef}
           defaultSize={50}
           minSize={20}
           maxSize={80}
           collapsible={true}
-          collapsedSize={4}
+          collapsedSize={0}
           onCollapse={() => setIsCollapsed(true)}
           onExpand={() => setIsCollapsed(false)}
         >
-          <div className={`h-full flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-background'}`}>
-            <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-gray-700' : ''}`}>
-              <div className="flex items-center gap-2">
+          <div className={`h-full flex flex-col relative ${isCollapsed ? '' : (isDarkMode ? 'bg-gray-800' : 'bg-gray-50')}`}>
+            {!isCollapsed && (
+              <>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  onClick={() => {
+                    panelRef.current?.collapse();
+                  }}
+                  className="absolute z-10"
+                  style={{ top: '10px', left: '10px' }}
                 >
-                  {isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+                  <ChevronLeftIcon className="h-4 w-4" />
                 </Button>
-                {!isCollapsed && (
-                  <span className={`font-semibold ${isDarkMode ? 'text-gray-100' : ''}`}>Editor (Mermaid Syntax)</span>
-                )}
-              </div>
-              {!isCollapsed && (
-                <Button size="sm" onClick={handleRender}>
-                  Render
-                </Button>
-              )}
-            </div>
-            {!isCollapsed && (
-              <textarea
-                className={`flex-1 p-4 font-mono text-sm resize-none focus:outline-none ${isDarkMode ? 'bg-gray-800 text-gray-100' : ''}`}
-                value={diagram}
-                onChange={(e) => setDiagram(e.target.value)}
-                placeholder="Enter your Mermaid diagram here..."
-              />
-            )}
-            {!isCollapsed && (
-              <div className={`p-2 text-xs border-t ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
-                {status}
-              </div>
+                <textarea
+                  className={`flex-1 p-4 font-mono text-sm resize-none focus:outline-none ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-50'}`}
+                  style={{ paddingLeft: '70px' }}
+                  value={diagram}
+                  onChange={(e) => setDiagram(e.target.value)}
+                  placeholder="Enter your Mermaid diagram here..."
+                />
+                <div className={`p-2 text-xs border-t ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
+                  {status}
+                </div>
+              </>
             )}
           </div>
         </ResizablePanel>
@@ -205,26 +237,23 @@ function App() {
         <ResizableHandle />
 
         <ResizablePanel defaultSize={50}>
-          <div className="h-full flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <span className="font-semibold">Preview</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExport}>
-                  <DownloadIcon className="h-4 w-4 mr-2" />
-                  Export SVG
-                </Button>
-              </div>
+          <div className={`h-full flex flex-col relative ${isDarkMode ? 'bg-gray-800' : 'bg-background'}`}>
+            <div className="absolute z-10 flex items-center" style={{ top: '10px', right: '10px', gap: '10px' }}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <DownloadIcon className="h-4 w-4 mr-2" />
+                Export SVG
+              </Button>
             </div>
-            <div className={`flex-1 overflow-auto p-4 flex items-center justify-center ${isDarkMode ? 'bg-gray-850' : ''}`}>
-              <div ref={previewRef} className="max-w-full max-h-full" />
+            <div className={`flex-1 overflow-auto p-4 ${isDarkMode ? 'bg-gray-850' : ''}`}>
+              <div ref={previewRef} className="w-full h-full flex items-center justify-center [&>svg]:!max-width-none [&>svg]:!height-auto" />
             </div>
           </div>
         </ResizablePanel>
