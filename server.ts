@@ -6,9 +6,10 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import express from 'express';
-import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import fastifyWebsocket from '@fastify/websocket';
+import { SocketStream } from '@fastify/websocket';
+import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import open from 'open';
@@ -34,9 +35,7 @@ interface ValidationResult {
 
 class MermaidMCPDemo {
   private server: Server;
-  private uiApp!: express.Application;
-  private uiServer: any;
-  private wss!: WebSocketServer;
+  private fastify!: FastifyInstance;
   private uiPort = 3001;
   private wsClients: Set<any> = new Set();
 
@@ -54,7 +53,6 @@ class MermaidMCPDemo {
     );
 
     this.setupMCPHandlers();
-    this.setupUIServer();
   }
 
   private setupMCPHandlers() {
@@ -181,24 +179,28 @@ class MermaidMCPDemo {
     });
   }
 
-  private setupUIServer() {
-    this.uiApp = express();
-    this.uiServer = createServer(this.uiApp);
-    this.wss = new WebSocketServer({ server: this.uiServer });
+  private async setupUIServer() {
+    this.fastify = Fastify({
+      logger: false
+    });
 
-    // Serve static files
-    this.uiApp.use(express.static(path.join(__dirname, 'public')));
-    this.uiApp.use(express.json());
+    // Register WebSocket plugin
+    await this.fastify.register(fastifyWebsocket);
+
+    // Register static file plugin
+    await this.fastify.register(fastifyStatic, {
+      root: path.join(__dirname, 'public')
+    });
 
     // Main UI route
-    this.uiApp.get('/', (req, res) => {
-      res.send(this.getUIHTML());
+    this.fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+      return reply.type('text/html').send(this.getUIHTML());
     });
 
     // API routes for UI
-    this.uiApp.post('/api/render', async (req, res) => {
+    this.fastify.post('/api/render', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const { diagram, theme, background } = req.body;
+        const { diagram, theme, background } = request.body as any;
         const result = await this.renderMermaid(diagram, theme, background);
         
         // Broadcast to all WebSocket clients
@@ -207,32 +209,33 @@ class MermaidMCPDemo {
           ...result
         });
         
-        res.json(result);
+        return reply.send(result);
       } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        return reply.code(500).send({ error: error.message });
       }
     });
 
-    this.uiApp.post('/api/validate', (req, res) => {
+    this.fastify.post('/api/validate', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const { diagram } = req.body;
+        const { diagram } = request.body as any;
         const result = this.validateMermaid(diagram);
-        res.json(result);
+        return reply.send(result);
       } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        return reply.code(500).send({ error: error.message });
       }
     });
 
-    this.uiApp.get('/api/themes', (req, res) => {
-      res.json(this.listThemes());
+    this.fastify.get('/api/themes', async (request: FastifyRequest, reply: FastifyReply) => {
+      return reply.send(this.listThemes());
     });
 
-    // WebSocket for real-time updates
-    this.wss.on('connection', (ws) => {
+    // WebSocket route
+    this.fastify.get('/ws', { websocket: true }, (connection: SocketStream, req: FastifyRequest) => {
+      const ws = connection.socket;
       console.log('WebSocket client connected');
       this.wsClients.add(ws);
 
-      ws.on('message', async (data) => {
+      ws.on('message', async (data: Buffer) => {
         try {
           const message = JSON.parse(data.toString());
 
@@ -272,10 +275,11 @@ class MermaidMCPDemo {
     });
   }
 
+
   private broadcastToClients(message: any) {
     const messageStr = JSON.stringify(message);
     this.wsClients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
+      if (client.readyState === 1) { // 1 = OPEN state
         client.send(messageStr);
       }
     });
@@ -368,14 +372,7 @@ class MermaidMCPDemo {
 
   private async openUI(autoOpen: boolean = true): Promise<any> {
     try {
-      if (!this.uiServer.listening) {
-        await new Promise((resolve, reject) => {
-          this.uiServer.listen(this.uiPort, (err: any) => {
-            if (err) reject(err);
-            else resolve(undefined);
-          });
-        });
-      }
+      // Server is already started in the start() method
 
       const url = `http://localhost:${this.uiPort}`;
 
@@ -689,7 +686,7 @@ class MermaidMCPDemo {
 
         // Initialize WebSocket connection
         function initWebSocket() {
-            ws = new WebSocket('ws://localhost:3001');
+            ws = new WebSocket('ws://localhost:3001/ws');
 
             ws.onopen = () => {
                 updateStatus('Connected');
@@ -915,16 +912,17 @@ class MermaidMCPDemo {
   }
 
   async start() {
-    // Start UI server
-    await new Promise<void>((resolve, reject) => {
-      this.uiServer.listen(this.uiPort, (err: any) => {
-        if (err) reject(err);
-        else {
-          console.log(`🌐 UI Server running on http://localhost:${this.uiPort}`);
-          resolve();
-        }
-      });
-    });
+    // Setup UI server with routes and WebSocket
+    await this.setupUIServer();
+    
+    // Start Fastify server
+    try {
+      await this.fastify.listen({ port: this.uiPort, host: '0.0.0.0' });
+      console.log(`🌐 UI Server running on http://localhost:${this.uiPort}`);
+    } catch (err) {
+      console.error('Failed to start server:', err);
+      process.exit(1);
+    }
 
     // Start MCP server
     const transport = new StdioServerTransport();

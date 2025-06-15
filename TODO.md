@@ -10,6 +10,11 @@ Must
 Should
 - Save hostory (somewhere?)
 - Use hono
+- Null state handling
+- Metadata
+  - Diagram title ()
+  - Addtional diagram context (non in mermaid)
+  - Codebase?
 
 Could
 
