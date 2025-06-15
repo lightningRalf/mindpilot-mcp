@@ -17,5 +17,6 @@ Should
   - Codebase?
 
 Could
+- Improve rendering of mermaid errors in client
 
 Wont

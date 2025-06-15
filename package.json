@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "description": "See through your agent's eyes. Visualize legacy code, architect new systems, understand everything.",
   "type": "module",
-  "main": "dist/server.js",
+  "main": "dist/server/server.js",
   "bin": {
-    "Obscura": "dist/server.js"
+    "Obscura": "dist/server/server.js"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx server.ts",
-    "start": "node dist/server.js",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd src/client && npm install && npm run build",
+    "build:server": "tsc",
+    "dev": "concurrently \"tsx src/server/server.ts\" \"cd src/client && npm run dev\"",
+    "start": "NODE_ENV=production node dist/server/server.js",
     "prepare": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,14 +26,15 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
+    "@fastify/static": "^7.0.0",
+    "@fastify/websocket": "^8.3.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "fastify": "^4.26.0",
-    "@fastify/websocket": "^8.3.0",
-    "@fastify/static": "^7.0.0",
     "open": "^9.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "concurrently": "^9.1.2",
     "tsx": "^4.6.0",
     "typescript": "^5.3.0"
   },
