@@ -16,6 +16,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import mermaid from "mermaid";
+import { MCPServerStatus } from "@/components/MCPServerStatus";
 
 // Initialize Mermaid
 mermaid.initialize({
@@ -82,6 +83,7 @@ function App() {
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
   const [hasManuallyZoomed, setHasManuallyZoomed] = useState(false);
+  const [isZooming, setIsZooming] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<any>(null);
@@ -271,6 +273,11 @@ function App() {
         countdownIntervalRef.current = null;
       }
       
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+        zoomTimeoutRef.current = null;
+      }
+      
       if (websocketRef.current && websocketRef.current.readyState !== WebSocket.CLOSED) {
         websocketRef.current.close();
       }
@@ -414,9 +421,26 @@ function App() {
     setIsPanning(false);
   };
 
+  // Ref to track zoom timeout
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Wheel handler for zooming
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
+    
+    // Set zooming state to disable transitions
+    setIsZooming(true);
+    
+    // Clear existing timeout
+    if (zoomTimeoutRef.current) {
+      clearTimeout(zoomTimeoutRef.current);
+    }
+    
+    // Reset zooming state after wheel events stop
+    zoomTimeoutRef.current = setTimeout(() => {
+      setIsZooming(false);
+    }, 150);
+    
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newZoom = Math.min(Math.max(zoom * delta, 0.1), 5);
     
@@ -425,13 +449,16 @@ function App() {
     if (rect) {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const dx = (x - rect.width / 2) / zoom;
-      const dy = (y - rect.height / 2) / zoom;
       
-      setPan(prev => ({
-        x: prev.x - dx * (newZoom - zoom),
-        y: prev.y - dy * (newZoom - zoom)
-      }));
+      // Calculate the point in diagram space (before zoom)
+      const pointX = (x - rect.width / 2 - pan.x) / zoom;
+      const pointY = (y - rect.height / 2 - pan.y) / zoom;
+      
+      // Calculate new pan to keep the same point under the mouse
+      setPan({
+        x: x - rect.width / 2 - pointX * newZoom,
+        y: y - rect.height / 2 - pointY * newZoom
+      });
     }
     
     setZoom(newZoom);
@@ -602,26 +629,10 @@ function App() {
                   placeholder="Enter your Mermaid diagram here..."
                 />
                 <div className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        connectionStatus === "Connected" ? "bg-green-500" : 
-                        connectionStatus === "Connecting..." || connectionStatus.startsWith("Reconnecting") ? "bg-yellow-500 animate-pulse" : 
-                        "bg-red-500"
-                      }`} />
-                      <span>MCP Server: {connectionStatus}</span>
-                    </div>
-                    {connectionStatus !== "Connected" && connectionStatus !== "Connecting..." && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={manualReconnect}
-                        className="h-5 px-2 text-xs"
-                      >
-                        Reconnect
-                      </Button>
-                    )}
-                  </div>
+                  <MCPServerStatus 
+                    connectionStatus={connectionStatus} 
+                    onReconnect={manualReconnect}
+                  />
                   <span>{status}</span>
                 </div>
               </>
@@ -662,7 +673,7 @@ function App() {
                 style={{
                   transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                   transformOrigin: 'center',
-                  transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+                  transition: isPanning || isZooming ? 'none' : 'transform 0.1s ease-out'
                 }}
               >
                 <div ref={previewRef} className="[&>svg]:!max-width-none [&>svg]:!max-height-none" />
@@ -709,6 +720,16 @@ function App() {
                   <Maximize2 className="h-4 w-4" />
                 </Button>
               </div>
+              
+              {/* MCP Server Status in bottom left when panel is collapsed */}
+              {isCollapsed && (
+                <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2">
+                  <MCPServerStatus 
+                    connectionStatus={connectionStatus} 
+                    onReconnect={manualReconnect}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </ResizablePanel>
