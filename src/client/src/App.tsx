@@ -11,6 +11,9 @@ import {
   Sun,
   Moon,
   FileText,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import mermaid from "mermaid";
 
@@ -20,7 +23,7 @@ mermaid.initialize({
   theme: "default",
   securityLevel: "loose",
   flowchart: {
-    useMaxWidth: true,
+    useMaxWidth: false,
     htmlLabels: true,
   },
 });
@@ -64,7 +67,13 @@ function App() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [connectionStatus, setConnectionStatus] = useState("Connecting...");
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+  const [autoFitOnResize, setAutoFitOnResize] = useState(true);
   const previewRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<any>(null);
 
   // WebSocket connection with auto-reconnect
@@ -124,7 +133,7 @@ function App() {
           theme: isDarkMode ? "dark" : "default",
           securityLevel: "loose",
           flowchart: {
-            useMaxWidth: true,
+            useMaxWidth: false,
             htmlLabels: true,
           },
         });
@@ -138,6 +147,10 @@ function App() {
         // Render the diagram
         const { svg } = await mermaid.render(id, diagram);
         previewRef.current!.innerHTML = svg;
+
+        // Reset pan when diagram changes and re-enable auto-fit
+        setPan({ x: 0, y: 0 });
+        setAutoFitOnResize(true);
 
         setStatus("Rendered successfully");
       } catch (error: any) {
@@ -170,6 +183,105 @@ function App() {
     setStatus("SVG exported");
   };
 
+  // Zoom handlers
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev * 1.2, 5));
+    setAutoFitOnResize(false);
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev / 1.2, 0.1));
+    setAutoFitOnResize(false);
+  };
+
+  const handleZoomReset = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setAutoFitOnResize(false);
+  };
+
+  const handleFitToScreen = (preserveAutoFit = false) => {
+    const svgElement = previewRef.current?.querySelector('svg');
+    const container = containerRef.current;
+    
+    if (svgElement && container) {
+      // Get SVG's natural dimensions from viewBox or width/height attributes
+      let svgWidth = svgElement.viewBox.baseVal.width || svgElement.width.baseVal.value;
+      let svgHeight = svgElement.viewBox.baseVal.height || svgElement.height.baseVal.value;
+      
+      // If no viewBox, try to get from the rendered size
+      if (!svgWidth || !svgHeight) {
+        const bbox = svgElement.getBBox();
+        svgWidth = bbox.width;
+        svgHeight = bbox.height;
+      }
+      
+      const containerRect = container.getBoundingClientRect();
+      
+      // Calculate scale to fit within container with padding
+      const padding = 40;
+      const scaleX = (containerRect.width - padding * 2) / svgWidth;
+      const scaleY = (containerRect.height - padding * 2) / svgHeight;
+      const fitScale = Math.min(scaleX, scaleY);
+      
+      // Apply the scale if valid
+      if (fitScale > 0 && isFinite(fitScale)) {
+        setZoom(fitScale);
+        setPan({ x: 0, y: 0 });
+        // Only disable auto-fit if not preserving it (manual button click)
+        if (!preserveAutoFit) {
+          setAutoFitOnResize(false);
+        }
+      }
+    }
+  };
+
+  // Mouse handlers for panning
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) { // Left click
+      setIsPanning(true);
+      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      setPan({
+        x: e.clientX - startPan.x,
+        y: e.clientY - startPan.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  // Wheel handler for zooming
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.min(Math.max(zoom * delta, 0.1), 5);
+    
+    // Zoom towards mouse position
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const dx = (x - rect.width / 2) / zoom;
+      const dy = (y - rect.height / 2) / zoom;
+      
+      setPan(prev => ({
+        x: prev.x - dx * (newZoom - zoom),
+        y: prev.y - dy * (newZoom - zoom)
+      }));
+    }
+    
+    setZoom(newZoom);
+    setAutoFitOnResize(false);
+  };
+
   // Apply dark mode class to body
   useEffect(() => {
     if (isDarkMode) {
@@ -178,6 +290,70 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  // Handle container resize
+  useEffect(() => {
+    if (!containerRef.current || !autoFitOnResize) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const resizeObserver = new ResizeObserver(() => {
+      // Debounce the fit calculation
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (autoFitOnResize) {
+          handleFitToScreen(true);
+        }
+      }, 300);
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      clearTimeout(timeoutId);
+      resizeObserver.disconnect();
+    };
+  }, [autoFitOnResize]);
+
+  // Keyboard shortcuts and prevent browser zoom
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent browser zoom
+      if ((e.metaKey || e.ctrlKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+        e.preventDefault();
+        
+        // Only handle our zoom if not in textarea
+        if (!(e.target instanceof HTMLTextAreaElement)) {
+          switch(e.key) {
+            case '+':
+            case '=':
+              handleZoomIn();
+              break;
+            case '-':
+              handleZoomOut();
+              break;
+            case '0':
+              handleZoomReset();
+              break;
+          }
+        }
+      }
+    };
+
+    // Prevent browser zoom via mouse wheel
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   return (
     <div className={`h-screen w-screen flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-background'}`}>
@@ -203,8 +379,20 @@ function App() {
           maxSize={80}
           collapsible={true}
           collapsedSize={0}
-          onCollapse={() => setIsCollapsed(true)}
-          onExpand={() => setIsCollapsed(false)}
+          onCollapse={() => {
+            setIsCollapsed(true);
+            // Fit to screen when editor is collapsed
+            setTimeout(() => {
+              if (autoFitOnResize) handleFitToScreen(true);
+            }, 300);
+          }}
+          onExpand={() => {
+            setIsCollapsed(false);
+            // Fit to screen when editor is expanded
+            setTimeout(() => {
+              if (autoFitOnResize) handleFitToScreen(true);
+            }, 300);
+          }}
         >
           <div className={`h-full flex flex-col relative ${isCollapsed ? '' : (isDarkMode ? 'bg-gray-800' : 'bg-gray-50')}`}>
             {!isCollapsed && (
@@ -254,8 +442,67 @@ function App() {
                 Export SVG
               </Button>
             </div>
-            <div className={`flex-1 overflow-auto p-4 ${isDarkMode ? 'bg-gray-850' : ''}`}>
-              <div ref={previewRef} className="w-full h-full flex items-center justify-center [&>svg]:!max-width-full [&>svg]:!max-height-full [&>svg]:!width-auto [&>svg]:!height-auto" />
+            <div 
+              ref={containerRef}
+              className={`flex-1 overflow-hidden relative ${isDarkMode ? 'bg-gray-850' : ''}`}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+              style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+            >
+              <div 
+                className="w-full h-full flex items-center justify-center"
+                style={{
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  transformOrigin: 'center',
+                  transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+                }}
+              >
+                <div ref={previewRef} className="[&>svg]:!max-width-none [&>svg]:!max-height-none" />
+              </div>
+              
+              {/* Zoom Controls */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur-sm rounded-lg border p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleZoomOut}
+                  title="Zoom out"
+                  className="h-8 w-8 p-0"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleZoomReset}
+                  title="Reset zoom"
+                  className="h-8 px-3 font-mono text-xs"
+                >
+                  {Math.round(zoom * 100)}%
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleZoomIn}
+                  title="Zoom in"
+                  className="h-8 w-8 p-0"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <div className="w-px h-6 bg-border mx-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleFitToScreen()}
+                  title="Fit to screen"
+                  className="h-8 w-8 p-0"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </ResizablePanel>
