@@ -63,8 +63,18 @@ function App() {
     style MCP fill:#e1f5fe
     style APP fill:#f3e5f5
     style CLAUDE fill:#fff3e0`);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('mermaid-mcp-dark-mode');
+    return saved === 'true';
+  });
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('mermaid-mcp-panel-collapsed');
+    return saved === 'true';
+  });
+  const [panelSize, setPanelSize] = useState(() => {
+    const saved = localStorage.getItem('mermaid-mcp-panel-size');
+    return saved ? parseFloat(saved) : 50;
+  });
   const [status, setStatus] = useState("Ready");
   const [connectionStatus, setConnectionStatus] = useState("Connecting...");
   const [zoom, setZoom] = useState(1);
@@ -75,51 +85,197 @@ function App() {
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<any>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectDelay = 30000; // Max 30 seconds
+  const initialReconnectDelay = 1000; // Start with 1 second
+
+  // Store WebSocket instance in a ref so it can be accessed from other functions
+  const websocketRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Manual reconnect function
+  const manualReconnect = () => {
+    console.log("Manual reconnect requested");
+    // Clear any pending reconnect
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    // Clear any countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    // Close existing connection if any
+    if (websocketRef.current && websocketRef.current.readyState !== WebSocket.CLOSED) {
+      websocketRef.current.close();
+    }
+    // Reset attempts for manual reconnect
+    reconnectAttemptsRef.current = 0;
+    // Trigger immediate reconnect
+    setConnectionStatus("Connecting...");
+  };
 
   // WebSocket connection with auto-reconnect
   useEffect(() => {
-    let websocket: WebSocket;
-    let reconnectTimeout: NodeJS.Timeout;
+    let isCleaningUp = false;
+    let connectTimeoutRef: NodeJS.Timeout | null = null;
 
     const connect = () => {
-      websocket = new WebSocket("ws://localhost:3001/ws");
+      // Don't attempt to connect if we're cleaning up
+      if (isCleaningUp) return;
+
+      // Clean up existing websocket if any
+      if (websocketRef.current && websocketRef.current.readyState !== WebSocket.CLOSED) {
+        websocketRef.current.close();
+      }
+
+      // Detect if we're in development mode (Vite dev server)
+      const isDev = window.location.port === '5173';
+      const wsUrl = isDev 
+        ? `ws://${window.location.hostname}:5173/ws`  // Use Vite proxy
+        : `ws://${window.location.hostname}:3001/ws`; // Direct connection
+      
+      console.log("Attempting WebSocket connection to", wsUrl);
+      const websocket = new WebSocket(wsUrl);
+      websocketRef.current = websocket;
 
       websocket.onopen = () => {
-        console.log("WebSocket connected to", websocket.url);
+        console.log("WebSocket connected to", websocket?.url);
         setConnectionStatus("Connected");
+        // Reset reconnect attempts on successful connection
+        reconnectAttemptsRef.current = 0;
+        // Clear any pending reconnect timeout on successful connection
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        // Clear any countdown interval
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
       };
 
       websocket.onmessage = async (event) => {
         console.log("WebSocket message received:", event.data);
-        const data = JSON.parse(event.data);
+        try {
+          const data = JSON.parse(event.data);
 
-        if (data.type === "render_result" && data.success && data.output) {
-          console.log("Updating diagram from WebSocket broadcast");
-          setDiagram(data.output);
-          // Theme is now controlled by UI only
-          setStatus("Rendered successfully (via broadcast)");
+          if (data.type === "render_result" && data.success && data.output) {
+            console.log("Updating diagram from WebSocket broadcast");
+            setDiagram(data.output);
+            // Theme is now controlled by UI only
+            setStatus("Rendered successfully (via broadcast)");
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
         }
       };
 
-      websocket.onclose = () => {
-        setConnectionStatus("Reconnecting...");
-        // Auto-reconnect after 1 second
-        reconnectTimeout = setTimeout(connect, 1000);
+      websocket.onclose = (event) => {
+        console.log("WebSocket closed:", event.code, event.reason);
+        
+        // Update connection status immediately
+        if (connectionStatus === "Connected") {
+          setConnectionStatus("Disconnected");
+        }
+        
+        // Only reconnect if we're not cleaning up and didn't close normally
+        if (!isCleaningUp) {
+          // Calculate exponential backoff delay
+          const delay = Math.min(
+            initialReconnectDelay * Math.pow(2, reconnectAttemptsRef.current),
+            maxReconnectDelay
+          );
+          
+          // Show initial reconnecting status
+          setTimeout(() => {
+            setConnectionStatus(`Reconnecting in ${Math.round(delay / 1000)}s...`);
+          }, 100);
+          
+          // Clear any existing countdown
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+          }
+          
+          // Countdown timer
+          let remainingSeconds = Math.round(delay / 1000);
+          countdownIntervalRef.current = setInterval(() => {
+            remainingSeconds--;
+            if (remainingSeconds <= 0) {
+              clearInterval(countdownIntervalRef.current!);
+              countdownIntervalRef.current = null;
+              setConnectionStatus("Connecting...");
+            } else {
+              setConnectionStatus(`Reconnecting in ${remainingSeconds}s...`);
+            }
+          }, 1000);
+          
+          reconnectAttemptsRef.current++;
+          
+          console.log(`Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`);
+          
+          // Clear any existing timeout
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          // Auto-reconnect with exponential backoff
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current); // Clear countdown when connecting
+              countdownIntervalRef.current = null;
+            }
+            connect();
+          }, delay);
+        }
       };
 
       websocket.onerror = (error) => {
         console.error("WebSocket error:", error);
         setConnectionStatus("Connection error");
+        // The onclose event will handle reconnection
       };
     };
 
+    // Initial connection
     connect();
 
+    // Watch for manual reconnect trigger
+    if (connectionStatus === "Connecting..." && websocketRef.current?.readyState !== WebSocket.OPEN) {
+      // Small delay to ensure state is updated
+      connectTimeoutRef = setTimeout(() => {
+        if (!isCleaningUp) {
+          connect();
+        }
+      }, 100);
+    }
+
+    // Cleanup function
     return () => {
-      clearTimeout(reconnectTimeout);
-      websocket.close();
+      console.log("Cleaning up WebSocket connection");
+      isCleaningUp = true;
+      
+      if (connectTimeoutRef) {
+        clearTimeout(connectTimeoutRef);
+      }
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      
+      if (websocketRef.current && websocketRef.current.readyState !== WebSocket.CLOSED) {
+        websocketRef.current.close();
+      }
     };
-  }, []);
+  }, [connectionStatus]);
 
   // Render diagram
   useEffect(() => {
@@ -282,14 +438,27 @@ function App() {
     setHasManuallyZoomed(true);
   };
 
-  // Apply dark mode class to body
+  // Apply dark mode class to body and save to localStorage
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+    localStorage.setItem('mermaid-mcp-dark-mode', isDarkMode.toString());
   }, [isDarkMode]);
+
+  // Save collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem('mermaid-mcp-panel-collapsed', isCollapsed.toString());
+  }, [isCollapsed]);
+
+  // Apply initial collapsed state
+  useEffect(() => {
+    if (isCollapsed && panelRef.current?.collapse) {
+      panelRef.current.collapse();
+    }
+  }, []);
 
   // Handle container resize
   useEffect(() => {
@@ -375,11 +544,17 @@ function App() {
         )}
         <ResizablePanel
           ref={panelRef}
-          defaultSize={50}
+          defaultSize={panelSize}
           minSize={20}
           maxSize={80}
           collapsible={true}
           collapsedSize={0}
+          onResize={(size) => {
+            if (size > 0) {
+              setPanelSize(size);
+              localStorage.setItem('mermaid-mcp-panel-size', size.toString());
+            }
+          }}
           onCollapse={() => {
             setIsCollapsed(true);
             // Fit to screen when editor is collapsed
@@ -426,8 +601,27 @@ function App() {
                   onChange={(e) => setDiagram(e.target.value)}
                   placeholder="Enter your Mermaid diagram here..."
                 />
-                <div className={`p-2 text-xs border-t flex justify-between ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
-                  <span>WS: {connectionStatus}</span>
+                <div className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <div className={`w-2 h-2 rounded-full ${
+                        connectionStatus === "Connected" ? "bg-green-500" : 
+                        connectionStatus === "Connecting..." || connectionStatus.startsWith("Reconnecting") ? "bg-yellow-500 animate-pulse" : 
+                        "bg-red-500"
+                      }`} />
+                      <span>MCP Server: {connectionStatus}</span>
+                    </div>
+                    {connectionStatus !== "Connected" && connectionStatus !== "Connecting..." && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={manualReconnect}
+                        className="h-5 px-2 text-xs"
+                      >
+                        Reconnect
+                      </Button>
+                    )}
+                  </div>
                   <span>{status}</span>
                 </div>
               </>
@@ -491,6 +685,7 @@ function App() {
                   onClick={handleZoomReset}
                   title="Reset zoom"
                   className="h-8 px-3 font-mono text-xs"
+                  style={{ minWidth: '60px' }}
                 >
                   {Math.round(zoom * 100)}%
                 </Button>

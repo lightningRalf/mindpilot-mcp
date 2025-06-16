@@ -459,10 +459,24 @@ class MermaidMCPDemo {
     const isMCPMode = !process.stdin.isTTY;
     
     if (isMCPMode) {
-      // MCP mode - only start the MCP server, no UI server
+      // MCP mode - start both MCP server and UI server
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      // No console logs in MCP mode as they would interfere with stdio protocol
+      
+      // Also start the UI server in MCP mode
+      await this.setupUIServer();
+      try {
+        await this.fastify!.listen({ port: this.uiPort, host: '0.0.0.0' });
+      } catch (err: any) {
+        // Server might already be running, which is OK
+        if (err.code !== 'EADDRINUSE') {
+          // Log errors to stderr so they don't interfere with stdio protocol
+          console.error('Failed to start Fastify server:', err);
+        }
+      }
+      
+      // Monitor parent process in MCP mode
+      this.monitorParentProcess();
     } else {
       // Standalone mode - only start UI server (no MCP server)
       await this.setupUIServer();
@@ -498,6 +512,22 @@ class MermaidMCPDemo {
         }
       }
     }
+  }
+
+  private monitorParentProcess() {
+    // Check if parent process is still alive periodically
+    const checkInterval = setInterval(() => {
+      try {
+        // If we can't kill with signal 0 (just check), parent is gone
+        process.kill(process.ppid, 0);
+      } catch (error) {
+        // Parent process is gone, exit gracefully
+        clearInterval(checkInterval);
+        this.cleanup().then(() => {
+          process.exit(0);
+        });
+      }
+    }, 1000); // Check every second
   }
 
   async cleanup() {
@@ -536,6 +566,18 @@ process.on('SIGINT', async () => {
 });
 
 process.on('SIGTERM', async () => {
+  await demo.cleanup();
+  process.exit(0);
+});
+
+// Handle stdin end (when Claude Desktop exits)
+process.stdin.on('end', async () => {
+  await demo.cleanup();
+  process.exit(0);
+});
+
+// Handle stdin close
+process.stdin.on('close', async () => {
   await demo.cleanup();
   process.exit(0);
 });
