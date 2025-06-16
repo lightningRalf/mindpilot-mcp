@@ -1,22 +1,28 @@
 ## To do
 
 Must
-- React refactor
-- MCP test harness
-- Tests
-- Dark and light themes (save preference somewhere?)
-- Zoom (pinch + on screen buttons)
+[ ] MCP test harness (uses production build) - DOCUMENT
+[x] Fix websocket issue
+[x] React refactor
+[x] Dark and light themes (save preference somewhere?)
 
 Should
-- Save hostory (somewhere?)
-- Use hono
+[x] Use Fastify
+[] Replace radix icons with lucide
+- Zoom (pinch + on screen buttons)
+- Save history (somewhere - local storage?)
+
 - Null state handling
 - Metadata
   - Diagram title ()
   - Addtional diagram context (non in mermaid)
   - Codebase?
+- Swap darkmode and svg icons
+- Title of exported diagram is correct
 
 Could
 - Improve rendering of mermaid errors in client
+- Tests
+
 
 Wont

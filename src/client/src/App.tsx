@@ -6,13 +6,12 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DownloadIcon,
-  SunIcon,
-  MoonIcon,
-  FileTextIcon,
-} from "@radix-ui/react-icons";
+  ChevronLeft,
+  Download,
+  Sun,
+  Moon,
+  FileText,
+} from "lucide-react";
 import mermaid from "mermaid";
 
 // Initialize Mermaid
@@ -64,7 +63,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [status, setStatus] = useState("Ready");
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
   const previewRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<any>(null);
 
@@ -77,14 +76,16 @@ function App() {
       websocket = new WebSocket("ws://localhost:3001/ws");
 
       websocket.onopen = () => {
-        setStatus("Connected");
-        setWs(websocket);
+        console.log("WebSocket connected to", websocket.url);
+        setConnectionStatus("Connected");
       };
 
       websocket.onmessage = async (event) => {
+        console.log("WebSocket message received:", event.data);
         const data = JSON.parse(event.data);
 
         if (data.type === "render_result" && data.success && data.output) {
+          console.log("Updating diagram from WebSocket broadcast");
           setDiagram(data.output);
           // Theme is now controlled by UI only
           setStatus("Rendered successfully (via broadcast)");
@@ -92,14 +93,14 @@ function App() {
       };
 
       websocket.onclose = () => {
-        setStatus("Reconnecting...");
-        setWs(null);
+        setConnectionStatus("Reconnecting...");
         // Auto-reconnect after 1 second
         reconnectTimeout = setTimeout(connect, 1000);
       };
 
-      websocket.onerror = () => {
-        setStatus("Connection error");
+      websocket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setConnectionStatus("Connection error");
       };
     };
 
@@ -192,7 +193,7 @@ function App() {
             style={{ top: '10px', left: '10px' }}
             title="Show editor"
           >
-            <FileTextIcon className="h-4 w-4" />
+            <FileText className="h-4 w-4" />
           </Button>
         )}
         <ResizablePanel
@@ -217,7 +218,7 @@ function App() {
                   className="absolute z-10"
                   style={{ top: '10px', left: '10px' }}
                 >
-                  <ChevronLeftIcon className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <textarea
                   className={`flex-1 p-4 font-mono text-sm resize-none focus:outline-none ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-50'}`}
@@ -226,8 +227,9 @@ function App() {
                   onChange={(e) => setDiagram(e.target.value)}
                   placeholder="Enter your Mermaid diagram here..."
                 />
-                <div className={`p-2 text-xs border-t ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
-                  {status}
+                <div className={`p-2 text-xs border-t flex justify-between ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
+                  <span>WS: {connectionStatus}</span>
+                  <span>{status}</span>
                 </div>
               </>
             )}
@@ -245,15 +247,15 @@ function App() {
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               >
-                {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <Button variant="outline" size="sm" onClick={handleExport}>
-                <DownloadIcon className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 mr-2" />
                 Export SVG
               </Button>
             </div>
             <div className={`flex-1 overflow-auto p-4 ${isDarkMode ? 'bg-gray-850' : ''}`}>
-              <div ref={previewRef} className="w-full h-full flex items-center justify-center [&>svg]:!max-width-none [&>svg]:!height-auto" />
+              <div ref={previewRef} className="w-full h-full flex items-center justify-center [&>svg]:!max-width-full [&>svg]:!max-height-full [&>svg]:!width-auto [&>svg]:!height-auto" />
             </div>
           </div>
         </ResizablePanel>

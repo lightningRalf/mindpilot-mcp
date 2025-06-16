@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 // server.ts - Mermaid MCP Demo Server with CDN-based rendering
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -36,9 +35,10 @@ interface ValidationResult {
 
 class MermaidMCPDemo {
   private server: Server;
-  private fastify!: FastifyInstance;
+  private fastify?: FastifyInstance;
   private uiPort = 3001;
   private wsClients: Set<any> = new Set();
+  private isShuttingDown = false;
 
   constructor() {
     this.server = new Server(
@@ -118,14 +118,45 @@ class MermaidMCPDemo {
 
       switch (name) {
         case 'render_mermaid':
+          const renderResult = await this.renderMermaid(
+            args?.diagram as string,
+            args?.background as string || 'white'
+          );
+          
+          // Ensure UI server is set up before broadcasting
+          if (!this.fastify) {
+            await this.setupUIServer();
+            try {
+              await this.fastify!.listen({ port: this.uiPort, host: '0.0.0.0' });
+            } catch (err: any) {
+              // Server might already be running
+              if (err.code !== 'EADDRINUSE') {
+                throw err;
+              }
+            }
+          }
+          
+          // Broadcast to all WebSocket clients
+          this.broadcastToClients({
+            type: 'render_result',
+            ...renderResult
+          });
+          
+          // Include debug info in response
+          const debugInfo = {
+            ...renderResult,
+            debug: {
+              wsClients: this.wsClients.size,
+              broadcast: true,
+              timestamp: new Date().toISOString()
+            }
+          };
+          
           return {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(await this.renderMermaid(
-                  args?.diagram as string,
-                  args?.background as string || 'white'
-                ), null, 2)
+                text: JSON.stringify(debugInfo, null, 2)
               }
             ]
           };
@@ -164,12 +195,18 @@ class MermaidMCPDemo {
     // Register WebSocket plugin
     await this.fastify.register(fastifyWebsocket);
 
+    // Check if we're in MCP mode (when stdin is not a TTY)
+    const isMCPMode = !process.stdin.isTTY;
     // Simple mode detection based on NODE_ENV
     const isProduction = process.env.NODE_ENV === 'production';
     
-    console.log(`🚀 Server running in ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode`);
+    // Only log if not in MCP mode
+    if (process.stdin.isTTY) {
+      console.log(`🚀 Server running in ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode`);
+    }
     
-    if (isProduction) {
+    // Serve static files in production mode OR when running as MCP server
+    if (isProduction || isMCPMode) {
       // Production mode: serve the built React app from dist/public
       const projectRoot = path.resolve(__dirname, '../..');
       const builtClientPath = path.join(projectRoot, 'dist/public');
@@ -183,6 +220,15 @@ class MermaidMCPDemo {
       });
     }
     // In development mode, we don't serve any HTML - Vite dev server handles the UI
+
+    // Debug endpoint
+    this.fastify.get('/api/debug', async (request: FastifyRequest, reply: FastifyReply) => {
+      return reply.send({
+        wsClients: this.wsClients.size,
+        serverRunning: true,
+        fastifyReady: this.fastify ? true : false
+      });
+    });
 
     // API routes for UI
     this.fastify.post('/api/render', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -215,7 +261,9 @@ class MermaidMCPDemo {
     // WebSocket route
     this.fastify.get('/ws', { websocket: true }, (connection: SocketStream, req: FastifyRequest) => {
       const ws = connection.socket;
-      console.log('WebSocket client connected');
+      if (process.stdin.isTTY) {
+        console.log('WebSocket client connected');
+      }
       this.wsClients.add(ws);
 
       ws.on('message', async (data: Buffer) => {
@@ -251,7 +299,9 @@ class MermaidMCPDemo {
       });
 
       ws.on('close', () => {
-        console.log('WebSocket client disconnected');
+        if (process.stdin.isTTY) {
+          console.log('WebSocket client disconnected');
+        }
         this.wsClients.delete(ws);
       });
     });
@@ -352,68 +402,161 @@ class MermaidMCPDemo {
 
   private async openUI(autoOpen: boolean = true): Promise<any> {
     try {
-      // Server is already started in the start() method
+      // If UI server isn't set up yet (e.g., in MCP mode), set it up now
+      if (!this.fastify) {
+        await this.setupUIServer();
+        
+        // Start Fastify server
+        try {
+          await this.fastify!.listen({ port: this.uiPort, host: '0.0.0.0' });
+          
+          // Add a small delay to ensure the server is fully ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (err: any) {
+          // Server might already be running
+          if (err.code !== 'EADDRINUSE') {
+            throw err;
+          }
+        }
+      }
 
       const url = `http://localhost:${this.uiPort}`;
 
+      // Verify server is actually listening before returning success
+      const isListening = this.fastify?.server?.listening || false;
+      
+      if (!isListening) {
+        throw new Error('Fastify server failed to start - not listening on port ' + this.uiPort);
+      }
+      
       if (autoOpen) {
         await open(url);
+        // Give the WebSocket time to connect
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       return {
         success: true,
         url,
         port: this.uiPort,
-        message: autoOpen ? 'UI opened in browser' : 'UI server started'
+        message: autoOpen ? 'UI opened in browser' : 'UI server started',
+        wsClients: this.wsClients.size,
+        serverListening: isListening,
+        fastifyReady: this.fastify ? true : false
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
+        stack: error.stack
       };
     }
   }
 
 
   async start() {
-    // Setup UI server with routes and WebSocket
-    await this.setupUIServer();
+    // Check if we're running as an MCP server (when stdin is a pipe/not a TTY)
+    const isMCPMode = !process.stdin.isTTY;
     
-    // Start Fastify server
-    try {
-      await this.fastify.listen({ port: this.uiPort, host: '0.0.0.0' });
-      console.log(`🌐 UI Server running on http://localhost:${this.uiPort}`);
-    } catch (err) {
-      console.error('Failed to start server:', err);
-      process.exit(1);
-    }
-
-    // Start MCP server
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.log('🔌 MCP Server connected via stdio');
-
-    // Auto-open UI
-    if (process.env.NODE_ENV === 'production') {
-      // Production mode - open the MCP server port
-      try {
-        await open(`http://localhost:${this.uiPort}`);
-        console.log(`🚀 Production server opened at http://localhost:${this.uiPort}`);
-      } catch (error) {
-        console.log(`ℹ️  Could not auto-open browser. Visit http://localhost:${this.uiPort} manually`);
-      }
+    if (isMCPMode) {
+      // MCP mode - only start the MCP server, no UI server
+      const transport = new StdioServerTransport();
+      await this.server.connect(transport);
+      // No console logs in MCP mode as they would interfere with stdio protocol
     } else {
-      // Dev mode - open the Vite dev server port
+      // Standalone mode - only start UI server (no MCP server)
+      await this.setupUIServer();
+      
+      // Start Fastify server
       try {
-        await open('http://localhost:5173');
-        console.log('🚀 Development UI opened at http://localhost:5173');
-      } catch (error) {
-        console.log('ℹ️  Could not auto-open browser. Visit http://localhost:5173 manually');
+        await this.fastify!.listen({ port: this.uiPort, host: '0.0.0.0' });
+        console.log(`🌐 UI Server running on http://localhost:${this.uiPort}`);
+      } catch (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
       }
+
+      // DO NOT start MCP server in standalone mode - it's only for Claude Desktop
+      console.log('🔧 Running in standalone mode (no MCP server)');
+
+      // Auto-open UI
+      if (process.env.NODE_ENV === 'production') {
+        // Production mode - open the MCP server port
+        try {
+          await open(`http://localhost:${this.uiPort}`);
+          console.log(`🚀 Production server opened at http://localhost:${this.uiPort}`);
+        } catch (error) {
+          console.log(`ℹ️  Could not auto-open browser. Visit http://localhost:${this.uiPort} manually`);
+        }
+      } else {
+        // Dev mode - open the Vite dev server port
+        try {
+          await open('http://localhost:5173');
+          console.log('🚀 Development UI opened at http://localhost:5173');
+        } catch (error) {
+          console.log('ℹ️  Could not auto-open browser. Visit http://localhost:5173 manually');
+        }
+      }
+    }
+  }
+
+  async cleanup() {
+    if (this.isShuttingDown) return;
+    this.isShuttingDown = true;
+
+    try {
+      // Close all WebSocket connections
+      this.wsClients.forEach(client => {
+        if (client.readyState === 1) {
+          client.close();
+        }
+      });
+      this.wsClients.clear();
+
+      // Close Fastify server
+      if (this.fastify) {
+        await this.fastify.close();
+      }
+
+      // Close MCP server
+      await this.server.close();
+    } catch (error) {
+      // Ignore errors during cleanup
     }
   }
 }
 
 // Start the demo server
 const demo = new MermaidMCPDemo();
-demo.start().catch(console.error);
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  await demo.cleanup();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await demo.cleanup();
+  process.exit(0);
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', async (error) => {
+  if (!process.stdin.isTTY) {
+    // In MCP mode, don't log to stdout
+  } else {
+    console.error('Uncaught exception:', error);
+  }
+  await demo.cleanup();
+  process.exit(1);
+});
+
+demo.start().catch(async (error) => {
+  if (!process.stdin.isTTY) {
+    // In MCP mode, don't log to stdout
+  } else {
+    console.error('Failed to start server:', error);
+  }
+  await demo.cleanup();
+  process.exit(1);
+});
