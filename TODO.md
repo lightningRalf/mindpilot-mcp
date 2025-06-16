@@ -10,25 +10,25 @@ Must
   How can they get the last known diagram when reconnected? (should use the local history mechanism)
 
 Should
+[ ] Mermaid Parse error should be fed back to MCP client
+[ ] Zoom to fit issue with large diagrams (or is it diagrams sent via mcp??)
 [ ] Save past diagrams (sent by MCP and with live edits (no versioning sorry))
-[ ] Remember dark mode state
-[ ] Remember panel width state
-
+[ ] Improve rendering of mermaid errors in client
+[x] Remember dark mode state
+[x] Remember panel width state
 [x] Use Fastify
-[] Replace radix icons with lucide
-- Zoom (pinch + on screen buttons)
-- Save history (somewhere - local storage?)
-
+[x] Replace radix icons with lucide
+[x] Zoom (pinch + on screen buttons)
 - Null state handling
+- Title of downloaded diagram is correct
 - Metadata
-  - Diagram title ()
+  - Project name
+  - Diagram title
   - Addtional diagram context (non in mermaid)
-  - Codebase?
-- Swap darkmode and svg icons
-- Title of exported diagram is correct
+[x] Swap darkmode and svg icons
 
 Could
-- Improve rendering of mermaid errors in client
+
 - Tests
 
 

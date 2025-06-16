@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
@@ -7,10 +7,10 @@ import {
 } from "@/components/ui/resizable";
 import {
   ChevronLeft,
+  ChevronRight,
   Download,
   Sun,
   Moon,
-  FileText,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -37,7 +37,7 @@ function App() {
         API[REST API<br/>:3001/api]
         FS[Fastify Static<br/>Server]
     end
-    
+
     subgraph "React UI"
         VITE[Vite Dev Server<br/>:5173]
         APP[React App]
@@ -45,12 +45,12 @@ function App() {
         PREVIEW[Preview Panel<br/>Rendered Diagram]
         THEME[Dark/Light Toggle]
     end
-    
+
     subgraph "Claude Desktop"
         CLAUDE[Claude App]
         TOOL[MCP Tools]
     end
-    
+
     CLAUDE -->|stdio| MCP
     TOOL -->|render_mermaid| MCP
     APP -->|WebSocket| WS
@@ -60,20 +60,20 @@ function App() {
     FS -->|Serves| APP
     EDITOR -->|Auto-render| PREVIEW
     THEME -->|Controls| PREVIEW
-    
+
     style MCP fill:#e1f5fe
     style APP fill:#f3e5f5
     style CLAUDE fill:#fff3e0`);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('mermaid-mcp-dark-mode');
-    return saved === 'true';
+    const saved = localStorage.getItem("mermaid-mcp-dark-mode");
+    return saved === "true";
   });
   const [isCollapsed, setIsCollapsed] = useState(() => {
-    const saved = localStorage.getItem('mermaid-mcp-panel-collapsed');
-    return saved === 'true';
+    const saved = localStorage.getItem("mermaid-mcp-panel-collapsed");
+    return saved === "true";
   });
   const [panelSize, setPanelSize] = useState(() => {
-    const saved = localStorage.getItem('mermaid-mcp-panel-size');
+    const saved = localStorage.getItem("mermaid-mcp-panel-size");
     return saved ? parseFloat(saved) : 50;
   });
   const [status, setStatus] = useState("Ready");
@@ -90,11 +90,75 @@ function App() {
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectDelay = 30000; // Max 30 seconds
   const initialReconnectDelay = 1000; // Start with 1 second
+  const maxReconnectAttempts = 5; // Stop after 5 attempts (1s, 2s, 4s, 8s, 16s)
 
   // Store WebSocket instance in a ref so it can be accessed from other functions
   const websocketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const connectFunctionRef = useRef<(() => void) | null>(null);
+
+  // Shared reconnect logic with exponential backoff
+  const attemptReconnect = useCallback((setupWebSocketFn: () => void) => {
+    const currentAttempt = reconnectAttemptsRef.current;
+
+    // Check if we've exceeded max attempts
+    if (currentAttempt >= maxReconnectAttempts) {
+      // All attempts exhausted - show red disconnected state
+      setConnectionStatus("Connection timed out");
+      console.log("Max reconnection attempts reached. Giving up.");
+      return;
+    }
+
+    // Calculate exponential backoff delay based on current attempt
+    const delay = Math.min(
+      initialReconnectDelay * Math.pow(2, currentAttempt),
+      maxReconnectDelay,
+    );
+
+    // Increment for next time
+    reconnectAttemptsRef.current++;
+
+    // Update with countdown after brief delay
+    setTimeout(() => {
+      setConnectionStatus(`Reconnecting in ${Math.round(delay / 1000)}s...`);
+    }, 50);
+
+    // Clear any existing countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
+    // Countdown timer
+    let remainingSeconds = Math.round(delay / 1000);
+    countdownIntervalRef.current = setInterval(() => {
+      remainingSeconds--;
+      if (remainingSeconds <= 0) {
+        clearInterval(countdownIntervalRef.current!);
+        countdownIntervalRef.current = null;
+        setConnectionStatus("Connecting...");
+      } else {
+        setConnectionStatus(`Reconnecting in ${remainingSeconds}s...`);
+      }
+    }, 1000);
+
+    console.log(
+      `Scheduling reconnect attempt ${reconnectAttemptsRef.current} of ${maxReconnectAttempts} in ${delay}ms`,
+    );
+
+    // Clear any existing timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    // Schedule reconnect
+    reconnectTimeoutRef.current = setTimeout(() => {
+      console.log(
+        `Executing reconnect attempt ${reconnectAttemptsRef.current}`,
+      );
+      setupWebSocketFn();
+    }, delay);
+  }, []);
 
   // Manual reconnect function
   const manualReconnect = () => {
@@ -109,14 +173,26 @@ function App() {
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
     }
-    // Close existing connection if any
-    if (websocketRef.current && websocketRef.current.readyState !== WebSocket.CLOSED) {
-      websocketRef.current.close();
-    }
+
     // Reset attempts for manual reconnect
     reconnectAttemptsRef.current = 0;
-    // Trigger immediate reconnect
-    setConnectionStatus("Connecting...");
+    setConnectionStatus("Reconnecting...");
+
+    // Check if websocket exists and is open
+    if (
+      websocketRef.current &&
+      websocketRef.current.readyState !== WebSocket.CLOSED
+    ) {
+      // Close it, which will trigger onclose handler
+      websocketRef.current.close();
+    } else {
+      // Websocket is already closed, need to manually trigger reconnect
+      // We need to get the connect function from the useEffect scope
+      // So we'll use a ref to store it
+      if (connectFunctionRef.current) {
+        attemptReconnect(connectFunctionRef.current);
+      }
+    }
   };
 
   // WebSocket connection with auto-reconnect
@@ -129,16 +205,19 @@ function App() {
       if (isCleaningUp) return;
 
       // Clean up existing websocket if any
-      if (websocketRef.current && websocketRef.current.readyState !== WebSocket.CLOSED) {
+      if (
+        websocketRef.current &&
+        websocketRef.current.readyState !== WebSocket.CLOSED
+      ) {
         websocketRef.current.close();
       }
 
       // Detect if we're in development mode (Vite dev server)
-      const isDev = window.location.port === '5173';
-      const wsUrl = isDev 
-        ? `ws://${window.location.hostname}:5173/ws`  // Use Vite proxy
+      const isDev = window.location.port === "5173";
+      const wsUrl = isDev
+        ? `ws://${window.location.hostname}:5173/ws` // Use Vite proxy
         : `ws://${window.location.hostname}:3001/ws`; // Direct connection
-      
+
       console.log("Attempting WebSocket connection to", wsUrl);
       const websocket = new WebSocket(wsUrl);
       websocketRef.current = websocket;
@@ -178,111 +257,64 @@ function App() {
 
       websocket.onclose = (event) => {
         console.log("WebSocket closed:", event.code, event.reason);
-        
-        // Update connection status immediately
-        if (connectionStatus === "Connected") {
-          setConnectionStatus("Disconnected");
-        }
-        
-        // Only reconnect if we're not cleaning up and didn't close normally
+        console.log("Close code:", event.code, "Clean:", event.wasClean);
+        console.log("Current status:", connectionStatus);
+        console.log("Reconnect attempts:", reconnectAttemptsRef.current);
+
+        // Immediately show reconnecting status to avoid red flash
+        setConnectionStatus("Reconnecting...");
+
+        // Only reconnect if we're not cleaning up
         if (!isCleaningUp) {
-          // Calculate exponential backoff delay
-          const delay = Math.min(
-            initialReconnectDelay * Math.pow(2, reconnectAttemptsRef.current),
-            maxReconnectDelay
-          );
-          
-          // Show initial reconnecting status
-          setTimeout(() => {
-            setConnectionStatus(`Reconnecting in ${Math.round(delay / 1000)}s...`);
-          }, 100);
-          
-          // Clear any existing countdown
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-          }
-          
-          // Countdown timer
-          let remainingSeconds = Math.round(delay / 1000);
-          countdownIntervalRef.current = setInterval(() => {
-            remainingSeconds--;
-            if (remainingSeconds <= 0) {
-              clearInterval(countdownIntervalRef.current!);
-              countdownIntervalRef.current = null;
-              setConnectionStatus("Connecting...");
-            } else {
-              setConnectionStatus(`Reconnecting in ${remainingSeconds}s...`);
-            }
-          }, 1000);
-          
-          reconnectAttemptsRef.current++;
-          
-          console.log(`Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`);
-          
-          // Clear any existing timeout
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          // Auto-reconnect with exponential backoff
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current); // Clear countdown when connecting
-              countdownIntervalRef.current = null;
-            }
-            connect();
-          }, delay);
+          attemptReconnect(connect);
         }
       };
 
       websocket.onerror = (error) => {
         console.error("WebSocket error:", error);
-        setConnectionStatus("Connection error");
+        // Don't set status here - let onclose handle it
         // The onclose event will handle reconnection
       };
     };
 
+    // Store connect function in ref for manual reconnect
+    connectFunctionRef.current = connect;
+
     // Initial connection
     connect();
-
-    // Watch for manual reconnect trigger
-    if (connectionStatus === "Connecting..." && websocketRef.current?.readyState !== WebSocket.OPEN) {
-      // Small delay to ensure state is updated
-      connectTimeoutRef = setTimeout(() => {
-        if (!isCleaningUp) {
-          connect();
-        }
-      }, 100);
-    }
 
     // Cleanup function
     return () => {
       console.log("Cleaning up WebSocket connection");
       isCleaningUp = true;
-      
+
       if (connectTimeoutRef) {
         clearTimeout(connectTimeoutRef);
       }
-      
+
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      
+
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
       }
-      
+
       if (zoomTimeoutRef.current) {
         clearTimeout(zoomTimeoutRef.current);
         zoomTimeoutRef.current = null;
       }
-      
-      if (websocketRef.current && websocketRef.current.readyState !== WebSocket.CLOSED) {
+
+      if (
+        websocketRef.current &&
+        websocketRef.current.readyState !== WebSocket.CLOSED
+      ) {
         websocketRef.current.close();
       }
     };
-  }, [connectionStatus]);
+  }, []); // Empty dependency array - we don't want to recreate WebSocket on status changes
 
   // Render diagram
   useEffect(() => {
@@ -348,12 +380,12 @@ function App() {
 
   // Zoom handlers
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev * 1.2, 5));
+    setZoom((prev) => Math.min(prev * 1.2, 5));
     setHasManuallyZoomed(true);
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev / 1.2, 0.1));
+    setZoom((prev) => Math.max(prev / 1.2, 0.1));
     setHasManuallyZoomed(true);
   };
 
@@ -364,29 +396,31 @@ function App() {
   };
 
   const handleFitToScreen = (isAutoResize = false) => {
-    const svgElement = previewRef.current?.querySelector('svg');
+    const svgElement = previewRef.current?.querySelector("svg");
     const container = containerRef.current;
-    
+
     if (svgElement && container) {
       // Get SVG's natural dimensions from viewBox or width/height attributes
-      let svgWidth = svgElement.viewBox.baseVal.width || svgElement.width.baseVal.value;
-      let svgHeight = svgElement.viewBox.baseVal.height || svgElement.height.baseVal.value;
-      
+      let svgWidth =
+        svgElement.viewBox.baseVal.width || svgElement.width.baseVal.value;
+      let svgHeight =
+        svgElement.viewBox.baseVal.height || svgElement.height.baseVal.value;
+
       // If no viewBox, try to get from the rendered size
       if (!svgWidth || !svgHeight) {
         const bbox = svgElement.getBBox();
         svgWidth = bbox.width;
         svgHeight = bbox.height;
       }
-      
+
       const containerRect = container.getBoundingClientRect();
-      
+
       // Calculate scale to fit within container with padding
       const padding = 40;
       const scaleX = (containerRect.width - padding * 2) / svgWidth;
       const scaleY = (containerRect.height - padding * 2) / svgHeight;
       const fitScale = Math.min(scaleX, scaleY);
-      
+
       // Apply the scale if valid
       if (fitScale > 0 && isFinite(fitScale)) {
         setZoom(fitScale);
@@ -401,7 +435,8 @@ function App() {
 
   // Mouse handlers for panning
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) { // Left click
+    if (e.button === 0) {
+      // Left click
       setIsPanning(true);
       setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
       e.preventDefault();
@@ -412,7 +447,7 @@ function App() {
     if (isPanning) {
       setPan({
         x: e.clientX - startPan.x,
-        y: e.clientY - startPan.y
+        y: e.clientY - startPan.y,
       });
     }
   };
@@ -427,40 +462,40 @@ function App() {
   // Wheel handler for zooming
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    
+
     // Set zooming state to disable transitions
     setIsZooming(true);
-    
+
     // Clear existing timeout
     if (zoomTimeoutRef.current) {
       clearTimeout(zoomTimeoutRef.current);
     }
-    
+
     // Reset zooming state after wheel events stop
     zoomTimeoutRef.current = setTimeout(() => {
       setIsZooming(false);
     }, 150);
-    
+
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newZoom = Math.min(Math.max(zoom * delta, 0.1), 5);
-    
+
     // Zoom towards mouse position
     const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      
+
       // Calculate the point in diagram space (before zoom)
       const pointX = (x - rect.width / 2 - pan.x) / zoom;
       const pointY = (y - rect.height / 2 - pan.y) / zoom;
-      
+
       // Calculate new pan to keep the same point under the mouse
       setPan({
         x: x - rect.width / 2 - pointX * newZoom,
-        y: y - rect.height / 2 - pointY * newZoom
+        y: y - rect.height / 2 - pointY * newZoom,
       });
     }
-    
+
     setZoom(newZoom);
     setHasManuallyZoomed(true);
   };
@@ -468,16 +503,16 @@ function App() {
   // Apply dark mode class to body and save to localStorage
   useEffect(() => {
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem('mermaid-mcp-dark-mode', isDarkMode.toString());
+    localStorage.setItem("mermaid-mcp-dark-mode", isDarkMode.toString());
   }, [isDarkMode]);
 
   // Save collapsed state to localStorage
   useEffect(() => {
-    localStorage.setItem('mermaid-mcp-panel-collapsed', isCollapsed.toString());
+    localStorage.setItem("mermaid-mcp-panel-collapsed", isCollapsed.toString());
   }, [isCollapsed]);
 
   // Apply initial collapsed state
@@ -515,20 +550,23 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent browser zoom
-      if ((e.metaKey || e.ctrlKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")
+      ) {
         e.preventDefault();
-        
+
         // Only handle our zoom if not in textarea
         if (!(e.target instanceof HTMLTextAreaElement)) {
-          switch(e.key) {
-            case '+':
-            case '=':
+          switch (e.key) {
+            case "+":
+            case "=":
               handleZoomIn();
               break;
-            case '-':
+            case "-":
               handleZoomOut();
               break;
-            case '0':
+            case "0":
               handleZoomReset();
               break;
           }
@@ -543,17 +581,19 @@ function App() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
     };
   }, []);
 
   return (
-    <div className={`h-screen w-screen flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-background'}`}>
+    <div
+      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+    >
       <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
         {isCollapsed && (
           <Button
@@ -563,10 +603,10 @@ function App() {
               panelRef.current?.expand();
             }}
             className="absolute z-10"
-            style={{ top: '10px', left: '10px' }}
+            style={{ top: "10px", left: "10px" }}
             title="Show editor"
           >
-            <FileText className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </Button>
         )}
         <ResizablePanel
@@ -579,7 +619,7 @@ function App() {
           onResize={(size) => {
             if (size > 0) {
               setPanelSize(size);
-              localStorage.setItem('mermaid-mcp-panel-size', size.toString());
+              localStorage.setItem("mermaid-mcp-panel-size", size.toString());
             }
           }}
           onCollapse={() => {
@@ -607,7 +647,9 @@ function App() {
             }, 300);
           }}
         >
-          <div className={`h-full flex flex-col relative ${isCollapsed ? '' : (isDarkMode ? 'bg-gray-800' : 'bg-gray-50')}`}>
+          <div
+            className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}
+          >
             {!isCollapsed && (
               <>
                 <Button
@@ -617,20 +659,22 @@ function App() {
                     panelRef.current?.collapse();
                   }}
                   className="absolute z-10"
-                  style={{ top: '10px', left: '10px' }}
+                  style={{ top: "10px", left: "10px" }}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <textarea
-                  className={`flex-1 p-4 font-mono text-sm resize-none focus:outline-none ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-50'}`}
-                  style={{ paddingLeft: '70px' }}
+                  className={`flex-1 p-4 font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-gray-50"}`}
+                  style={{ paddingLeft: "70px" }}
                   value={diagram}
                   onChange={(e) => setDiagram(e.target.value)}
                   placeholder="Enter your Mermaid diagram here..."
                 />
-                <div className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-muted-foreground'}`}>
-                  <MCPServerStatus 
-                    connectionStatus={connectionStatus} 
+                <div
+                  className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground"}`}
+                >
+                  <MCPServerStatus
+                    connectionStatus={connectionStatus}
                     onReconnect={manualReconnect}
                   />
                   <span>{status}</span>
@@ -643,44 +687,63 @@ function App() {
         <ResizableHandle />
 
         <ResizablePanel defaultSize={50}>
-          <div className={`h-full flex flex-col relative ${isDarkMode ? 'bg-gray-800' : 'bg-background'}`}>
-            <div className="absolute z-10 flex items-center" style={{ top: '10px', right: '10px', gap: '10px' }}>
+          <div
+            className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-background"}`}
+          >
+            <div
+              className="absolute z-10 flex items-center"
+              style={{ top: "10px", right: "10px", gap: "10px" }}
+            >
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleExport}
+                title="Export SVG"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setIsDarkMode(!isDarkMode)}
-                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                title={
+                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
               >
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" />
-                Export SVG
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
               </Button>
             </div>
-            <div 
+            <div
               ref={containerRef}
-              className={`flex-1 overflow-hidden relative ${isDarkMode ? 'bg-gray-850' : ''}`}
+              className={`flex-1 overflow-hidden relative ${isDarkMode ? "bg-gray-850" : ""}`}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
               onWheel={handleWheel}
-              style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+              style={{ cursor: isPanning ? "grabbing" : "grab" }}
             >
-              <div 
+              <div
                 className="w-full h-full flex items-center justify-center"
                 style={{
                   transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                  transformOrigin: 'center',
-                  transition: isPanning || isZooming ? 'none' : 'transform 0.1s ease-out'
+                  transformOrigin: "center",
+                  transition:
+                    isPanning || isZooming ? "none" : "transform 0.1s ease-out",
                 }}
               >
-                <div ref={previewRef} className="[&>svg]:!max-width-none [&>svg]:!max-height-none" />
+                <div
+                  ref={previewRef}
+                  className="[&>svg]:!max-width-none [&>svg]:!max-height-none"
+                />
               </div>
-              
+
               {/* Zoom Controls */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur-sm rounded-lg border p-1">
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-100/90 dark:bg-sky-900/90 backdrop-blur-sm rounded-lg border border-sky-200 dark:border-sky-700 p-1">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -696,7 +759,7 @@ function App() {
                   onClick={handleZoomReset}
                   title="Reset zoom"
                   className="h-8 px-3 font-mono text-xs"
-                  style={{ minWidth: '60px' }}
+                  style={{ minWidth: "60px" }}
                 >
                   {Math.round(zoom * 100)}%
                 </Button>
@@ -709,7 +772,7 @@ function App() {
                 >
                   <ZoomIn className="h-4 w-4" />
                 </Button>
-                <div className="w-px h-6 bg-border mx-1" />
+                <div className="w-px h-6 bg-sky-300 dark:bg-sky-600 mx-1" />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -720,12 +783,14 @@ function App() {
                   <Maximize2 className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               {/* MCP Server Status in bottom left when panel is collapsed */}
               {isCollapsed && (
-                <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2">
-                  <MCPServerStatus 
-                    connectionStatus={connectionStatus} 
+                <div
+                  className={`absolute bottom-4 left-4 backdrop-blur-sm rounded-lg p-2 ${isDarkMode ? "bg-gray-800/90" : "bg-background/90"}`}
+                >
+                  <MCPServerStatus
+                    connectionStatus={connectionStatus}
                     onReconnect={manualReconnect}
                   />
                 </div>

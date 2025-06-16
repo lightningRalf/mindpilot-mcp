@@ -61,29 +61,53 @@ To use this server with Claude Desktop, you need to add it to your MCP settings.
 For local development with hot reloading:
 
 ```bash
-# First, start the dev server
-npm run dev
+# First, clone the repository and navigate to the project directory
+git clone <repository-url>
+cd mermaid-mcp
 
-# Then add to Claude Desktop
-claude mcp add mermaid-dev -- npx tsx /Users/alex/Projects/mermaid-mcp/src/server/server.ts
+# Install dependencies
+npm install
+
+# Add to Claude Desktop (replace /path/to/mermaid-mcp with your actual path)
+claude mcp add mermaid-dev -- npx tsx /path/to/mermaid-mcp/src/server/server.ts
+
+# Start the development server
+npm run dev
 ```
+
+The development server will start with:
+- MCP server on port 3001 (handles MCP protocol, API & WebSocket)
+- Vite dev server on port 5173 (React UI with hot module replacement)
+
+Visit http://localhost:5173 to see the UI while developing.
 
 #### Production Mode
 
 For production use:
 
 ```bash
-# First, build the project
+# First, clone and build the project
+git clone <repository-url>
+cd mermaid-mcp
+npm install
 npm run build
 
-# Then add to Claude Desktop
-claude mcp add mermaid-server -- node /Users/alex/Projects/mermaid-mcp/dist/server/server.js
+# Add to Claude Desktop (replace /path/to/mermaid-mcp with your actual path)
+claude mcp add mermaid-server -- node /path/to/mermaid-mcp/dist/server/server.js
 ```
 
-Or if published to npm:
+The production server runs everything on port 3001.
 
-```bash
-claude mcp add mermaid-server -- npx @your-username/mermaid-mcp
-```
+#### Using the MCP Server
 
-After adding, restart Claude Desktop to load the MCP server.
+After adding the server to Claude Desktop:
+
+1. Restart Claude Desktop to load the MCP server
+2. Ask Claude to create a diagram: "Create a flowchart showing the login process"
+3. Ask Claude to open the UI: "Open the diagram UI"
+4. The browser will automatically open to show your diagrams
+5. All diagrams created by Claude will appear in real-time in the UI
+
+You can also manually visit:
+- Development: http://localhost:5173
+- Production: http://localhost:3001
