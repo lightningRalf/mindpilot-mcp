@@ -71,7 +71,7 @@ function App() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
-  const [autoFitOnResize, setAutoFitOnResize] = useState(true);
+  const [hasManuallyZoomed, setHasManuallyZoomed] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<any>(null);
@@ -148,9 +148,9 @@ function App() {
         const { svg } = await mermaid.render(id, diagram);
         previewRef.current!.innerHTML = svg;
 
-        // Reset pan when diagram changes and re-enable auto-fit
+        // Reset pan when diagram changes and reset manual zoom flag
         setPan({ x: 0, y: 0 });
-        setAutoFitOnResize(true);
+        setHasManuallyZoomed(false);
 
         setStatus("Rendered successfully");
       } catch (error: any) {
@@ -186,21 +186,21 @@ function App() {
   // Zoom handlers
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev * 1.2, 5));
-    setAutoFitOnResize(false);
+    setHasManuallyZoomed(true);
   };
 
   const handleZoomOut = () => {
     setZoom(prev => Math.max(prev / 1.2, 0.1));
-    setAutoFitOnResize(false);
+    setHasManuallyZoomed(true);
   };
 
   const handleZoomReset = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
-    setAutoFitOnResize(false);
+    setHasManuallyZoomed(true);
   };
 
-  const handleFitToScreen = (preserveAutoFit = false) => {
+  const handleFitToScreen = (isAutoResize = false) => {
     const svgElement = previewRef.current?.querySelector('svg');
     const container = containerRef.current;
     
@@ -228,9 +228,9 @@ function App() {
       if (fitScale > 0 && isFinite(fitScale)) {
         setZoom(fitScale);
         setPan({ x: 0, y: 0 });
-        // Only disable auto-fit if not preserving it (manual button click)
-        if (!preserveAutoFit) {
-          setAutoFitOnResize(false);
+        // Mark as manual zoom if triggered by button click
+        if (!isAutoResize) {
+          setHasManuallyZoomed(true);
         }
       }
     }
@@ -279,7 +279,7 @@ function App() {
     }
     
     setZoom(newZoom);
-    setAutoFitOnResize(false);
+    setHasManuallyZoomed(true);
   };
 
   // Apply dark mode class to body
@@ -293,14 +293,15 @@ function App() {
 
   // Handle container resize
   useEffect(() => {
-    if (!containerRef.current || !autoFitOnResize) return;
+    if (!containerRef.current) return;
 
     let timeoutId: NodeJS.Timeout;
     const resizeObserver = new ResizeObserver(() => {
       // Debounce the fit calculation
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        if (autoFitOnResize) {
+        // Always fit on resize unless user has manually zoomed
+        if (!hasManuallyZoomed) {
           handleFitToScreen(true);
         }
       }, 300);
@@ -312,7 +313,7 @@ function App() {
       clearTimeout(timeoutId);
       resizeObserver.disconnect();
     };
-  }, [autoFitOnResize]);
+  }, [hasManuallyZoomed]); // Re-setup when manual zoom state changes
 
   // Keyboard shortcuts and prevent browser zoom
   useEffect(() => {
@@ -383,14 +384,24 @@ function App() {
             setIsCollapsed(true);
             // Fit to screen when editor is collapsed
             setTimeout(() => {
-              if (autoFitOnResize) handleFitToScreen(true);
+              if (!hasManuallyZoomed) {
+                handleFitToScreen(true);
+              } else {
+                // Reset manual zoom flag on panel state change
+                setHasManuallyZoomed(false);
+              }
             }, 300);
           }}
           onExpand={() => {
             setIsCollapsed(false);
             // Fit to screen when editor is expanded
             setTimeout(() => {
-              if (autoFitOnResize) handleFitToScreen(true);
+              if (!hasManuallyZoomed) {
+                handleFitToScreen(true);
+              } else {
+                // Reset manual zoom flag on panel state change
+                setHasManuallyZoomed(false);
+              }
             }, 300);
           }}
         >
