@@ -476,8 +476,16 @@ function App() {
       setIsZooming(false);
     }, 150);
 
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.min(Math.max(zoom * delta, 0.1), 5);
+    // More natural zoom with logarithmic scaling
+    // Detect if using trackpad (smaller delta values) vs mouse wheel (larger, discrete values)
+    const isTrackpad = Math.abs(e.deltaY) < 50;
+    const zoomSensitivity = isTrackpad ? 0.01 : 0.02; // Balanced sensitivity
+    
+    const deltaY = e.deltaY;
+    
+    // Apply logarithmic scaling for more natural feel
+    const zoomFactor = Math.exp(-deltaY * zoomSensitivity);
+    const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.1), 5);
 
     // Zoom towards mouse position
     const rect = containerRef.current?.getBoundingClientRect();
@@ -602,8 +610,7 @@ function App() {
             onClick={() => {
               panelRef.current?.expand();
             }}
-            className="absolute z-10"
-            style={{ top: "10px", left: "10px" }}
+            className="absolute z-10 top-4 left-4"
             title="Show editor"
           >
             <ChevronRight className="h-4 w-4" />
@@ -658,14 +665,12 @@ function App() {
                   onClick={() => {
                     panelRef.current?.collapse();
                   }}
-                  className="absolute z-10"
-                  style={{ top: "10px", left: "10px" }}
+                  className="absolute z-10 top-4 left-4"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <textarea
-                  className={`flex-1 p-4 font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-gray-50"}`}
-                  style={{ paddingLeft: "70px" }}
+                  className={`flex-1 p-4 pl-[70px] font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-gray-50"}`}
                   value={diagram}
                   onChange={(e) => setDiagram(e.target.value)}
                   placeholder="Enter your Mermaid diagram here..."
@@ -690,10 +695,7 @@ function App() {
           <div
             className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-background"}`}
           >
-            <div
-              className="absolute z-10 flex items-center"
-              style={{ top: "10px", right: "10px", gap: "10px" }}
-            >
+            <div className="absolute z-10 top-4 right-4 flex items-center gap-4">
               <Button
                 variant="outline"
                 size="icon"
