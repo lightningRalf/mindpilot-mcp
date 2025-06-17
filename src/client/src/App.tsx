@@ -216,7 +216,7 @@ function App() {
       const isDev = window.location.port === "5173";
       const wsUrl = isDev
         ? `ws://${window.location.hostname}:5173/ws` // Use Vite proxy
-        : `ws://${window.location.hostname}:3001/ws`; // Direct connection
+        : `ws://${window.location.hostname}:${window.location.port}/ws`; // Use same port as served
 
       console.log("Attempting WebSocket connection to", wsUrl);
       const websocket = new WebSocket(wsUrl);
@@ -249,6 +249,13 @@ function App() {
             setDiagram(data.output);
             // Theme is now controlled by UI only
             setStatus("Rendered successfully (via broadcast)");
+            
+            // Reset view to fit new diagram
+            setHasManuallyZoomed(false);
+            // Small delay to allow diagram to render before fitting
+            setTimeout(() => {
+              handleFitToScreen(true);
+            }, 100);
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
@@ -327,6 +334,7 @@ function App() {
           startOnLoad: false,
           theme: isDarkMode ? "dark" : "default",
           securityLevel: "loose",
+          suppressErrorRendering: true,
           flowchart: {
             useMaxWidth: false,
             htmlLabels: true,
@@ -681,6 +689,8 @@ function App() {
                   <MCPServerStatus
                     connectionStatus={connectionStatus}
                     onReconnect={manualReconnect}
+                    isDarkMode={isDarkMode}
+                    isCollapsedView={false}
                   />
                   <span>{status}</span>
                 </div>
@@ -745,7 +755,7 @@ function App() {
               </div>
 
               {/* Zoom Controls */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-100/90 dark:bg-sky-900/90 backdrop-blur-sm rounded-lg border border-sky-200 dark:border-sky-700 p-1">
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-50/90 dark:bg-sky-950/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700 p-1">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -760,8 +770,7 @@ function App() {
                   size="sm"
                   onClick={handleZoomReset}
                   title="Reset zoom"
-                  className="h-8 px-3 font-mono text-xs"
-                  style={{ minWidth: "60px" }}
+                  className="h-8 px-3 text-sm min-w-[60px]"
                 >
                   {Math.round(zoom * 100)}%
                 </Button>
@@ -788,12 +797,12 @@ function App() {
 
               {/* MCP Server Status in bottom left when panel is collapsed */}
               {isCollapsed && (
-                <div
-                  className={`absolute bottom-4 left-4 backdrop-blur-sm rounded-lg p-2 ${isDarkMode ? "bg-gray-800/90" : "bg-background/90"}`}
-                >
+                <div className="absolute bottom-4 left-4">
                   <MCPServerStatus
                     connectionStatus={connectionStatus}
                     onReconnect={manualReconnect}
+                    isDarkMode={isDarkMode}
+                    isCollapsedView={true}
                   />
                 </div>
               )}

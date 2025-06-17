@@ -55,6 +55,26 @@ export async function validateMermaidSyntax(
     };
   }
 
+  // Pre-validation: Check for balanced brackets
+  const bracketPairs = [
+    { open: '[', close: ']', name: 'square' },
+    { open: '{', close: '}', name: 'curly' },
+    { open: '(', close: ')', name: 'round' }
+  ];
+  
+  for (const pair of bracketPairs) {
+    const openCount = (diagram.match(new RegExp(`\\${pair.open}`, 'g')) || []).length;
+    const closeCount = (diagram.match(new RegExp(`\\${pair.close}`, 'g')) || []).length;
+    
+    if (openCount !== closeCount) {
+      return {
+        valid: false,
+        errors: [`Unmatched ${pair.name} brackets. Found ${openCount} opening and ${closeCount} closing ${pair.name} brackets.`],
+        warnings: checkForWarnings(diagram)
+      };
+    }
+  }
+
   try {
     // Use Mermaid's parser to validate
     await mermaid.parse(diagram);

@@ -33,7 +33,7 @@ interface RenderResult {
 class MermaidMCPDemo {
   private server: Server;
   private fastify?: FastifyInstance;
-  private uiPort = 3001;
+  private uiPort = 4000;
   private wsClients: Set<any> = new Set();
   private isShuttingDown = false;
 
