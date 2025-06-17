@@ -608,7 +608,7 @@ function App() {
 
   return (
     <div
-      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-background"}`}
+      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-slate-100"}`}
     >
       <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
         {isCollapsed && (
@@ -663,7 +663,7 @@ function App() {
           }}
         >
           <div
-            className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}
+            className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-slate-200"}`}
           >
             {!isCollapsed && (
               <>
@@ -678,13 +678,13 @@ function App() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <textarea
-                  className={`flex-1 p-4 pl-[70px] font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-gray-50"}`}
+                  className={`flex-1 p-4 pl-[70px] font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-slate-200"}`}
                   value={diagram}
                   onChange={(e) => setDiagram(e.target.value)}
                   placeholder="Enter your Mermaid diagram here..."
                 />
                 <div
-                  className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground"}`}
+                  className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}
                 >
                   <MCPServerStatus
                     connectionStatus={connectionStatus}
@@ -699,13 +699,13 @@ function App() {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle />
+        <ResizableHandle className="bg-gray-300 dark:bg-gray-700" />
 
         <ResizablePanel defaultSize={50}>
           <div
-            className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-background"}`}
+            className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-slate-100"}`}
           >
-            <div className="absolute z-10 top-4 right-4 flex items-center gap-4">
+            <div className="absolute z-10 top-4 right-4 flex items-center gap-3">
               <Button
                 variant="outline"
                 size="icon"
@@ -755,7 +755,7 @@ function App() {
               </div>
 
               {/* Zoom Controls */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-50/90 dark:bg-sky-950/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700 p-1">
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-100/90 dark:bg-sky-950/90 backdrop-blur-sm rounded-lg border border-gray-400 dark:border-gray-600 p-1">
                 <Button
                   variant="ghost"
                   size="sm"

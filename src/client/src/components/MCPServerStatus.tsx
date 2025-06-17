@@ -53,8 +53,8 @@ export function MCPServerStatus({
     return (
       <button
         onClick={onReconnect}
-        className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors ${
-          isDarkMode ? "bg-gray-800/80" : "bg-white/80"
+        className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 border border-gray-400 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-500 transition-colors ${
+          isDarkMode ? "bg-gray-800/90" : "bg-sky-100/90"
         }`}
       >
         <div className="w-2 h-2 rounded-full bg-red-500" />
@@ -67,7 +67,7 @@ export function MCPServerStatus({
   return (
     <div
       className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 ${
-        isDarkMode ? "bg-gray-800/80" : "bg-white/80"
+        isDarkMode ? "bg-gray-800/90" : "bg-slate-100/90"
       }`}
     >
       <div
