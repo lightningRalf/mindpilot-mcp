@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "npm run build:client && npm run build:server",
-    "build:client": "cd src/client && npm install && npm run build",
+    "build:client": "cd src/client && npm run build",
     "build:server": "tsc",
     "dev": "concurrently \"tsx src/server/server.ts\" \"cd src/client && npm run dev\"",
     "start": "NODE_ENV=production node dist/server/server.js",
@@ -30,7 +30,9 @@
     "@fastify/websocket": "^8.3.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "fastify": "^4.26.0",
-    "open": "^9.1.0"
+    "mermaid": "^10.9.0",
+    "open": "^9.1.0",
+    "playwright": "^1.42.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -40,5 +42,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "workspaces": [
+    "src/client"
+  ]
 }

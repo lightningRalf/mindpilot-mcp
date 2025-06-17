@@ -14,6 +14,7 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import open from 'open';
+import { validateMermaidSyntax, getValidDiagramTypes, ValidationResult } from './mermaid-validator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,13 +26,9 @@ interface RenderResult {
   renderTime: number;
   error?: string;
   clientSideRender?: boolean;
-}
-
-interface ValidationResult {
-  valid: boolean;
-  errors?: string[];
   warnings?: string[];
 }
+
 
 class MermaidMCPDemo {
   private server: Server;
@@ -63,32 +60,18 @@ class MermaidMCPDemo {
         tools: [
           {
             name: 'render_mermaid',
-            description: 'Render a Mermaid diagram to SVG format',
+            description: 'Render a Mermaid diagram to SVG format. CRITICAL RULES: 1) Node IDs must be alphanumeric without spaces (use A1, nodeA, start_node). 2) For node labels with special characters, wrap in quotes: A["Label with spaces"] or A["Process (step 1)"]. 3) For quotes in labels use &quot;, for < use &lt;, for > use &gt;. 4) For square brackets in labels use A["Array&#91;0&#93;"]. 5) Always close all brackets and quotes. 6) Use consistent arrow styles (either --> or ->). Example: graph TD\\n  A["Complex Label"] --> B{Decision?}\\n  B -->|Yes| C["Result &quot;OK&quot;"]\\n\\nIMPORTANT: If the diagram fails validation, the error message will explain what needs to be fixed. Please read the error carefully and retry with a corrected diagram.',
             inputSchema: {
               type: 'object',
               properties: {
                 diagram: {
                   type: 'string',
-                  description: 'Mermaid diagram syntax'
+                  description: 'Mermaid diagram syntax. MUST start with diagram type (graph TD, flowchart LR, sequenceDiagram, etc). Node IDs cannot have spaces. Use quotes for labels with spaces/special chars.'
                 },
                 background: {
                   type: 'string',
                   description: 'Background color',
                   default: 'white'
-                }
-              },
-              required: ['diagram']
-            }
-          },
-          {
-            name: 'validate_mermaid',
-            description: 'Validate Mermaid diagram syntax without rendering',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                diagram: {
-                  type: 'string',
-                  description: 'Mermaid diagram syntax to validate'
                 }
               },
               required: ['diagram']
@@ -118,10 +101,43 @@ class MermaidMCPDemo {
 
       switch (name) {
         case 'render_mermaid':
-          const renderResult = await this.renderMermaid(
-            args?.diagram as string,
-            args?.background as string || 'white'
-          );
+          const diagram = args?.diagram as string || '';
+          const background = args?.background as string || 'white';
+          
+          // Validate the diagram first
+          const validation = await validateMermaidSyntax(diagram);
+          
+          // If validation fails with errors, return the errors to MCP client
+          if (!validation.valid && validation.errors && validation.errors.length > 0) {
+            const errorResult = {
+              success: false,
+              error: `Diagram validation failed: ${validation.errors.join(', ')}`,
+              validation: validation,
+              format: 'mermaid',
+              clientSideRender: true,
+              debug: {
+                wsClients: this.wsClients.size,
+                broadcast: false,
+                timestamp: new Date().toISOString()
+              }
+            };
+            
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(errorResult, null, 2)
+                }
+              ]
+            };
+          }
+          
+          const renderResult = await this.renderMermaid(diagram, background);
+          
+          // Add validation warnings to the result if any
+          if (validation.warnings && validation.warnings.length > 0) {
+            renderResult.warnings = validation.warnings;
+          }
           
           // Ensure UI server is set up before broadcasting
           if (!this.fastify) {
@@ -157,16 +173,6 @@ class MermaidMCPDemo {
               {
                 type: 'text',
                 text: JSON.stringify(debugInfo, null, 2)
-              }
-            ]
-          };
-
-        case 'validate_mermaid':
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(this.validateMermaid(args?.diagram as string), null, 2)
               }
             ]
           };
@@ -251,7 +257,7 @@ class MermaidMCPDemo {
     this.fastify.post('/api/validate', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { diagram } = request.body as any;
-        const result = this.validateMermaid(diagram);
+        const result = await validateMermaidSyntax(diagram);
         return reply.send(result);
       } catch (error: any) {
         return reply.code(500).send({ error: error.message });
@@ -283,7 +289,7 @@ class MermaidMCPDemo {
               break;
 
             case 'validate':
-              const validation = this.validateMermaid(message.diagram);
+              const validation = await validateMermaidSyntax(message.diagram);
               ws.send(JSON.stringify({
                 type: 'validation_result',
                 ...validation
@@ -339,66 +345,6 @@ class MermaidMCPDemo {
     }
   }
 
-  private validateMermaid(diagram: string): ValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    try {
-      // Basic validation rules
-      if (!diagram || diagram.trim().length === 0) {
-        errors.push('Diagram cannot be empty');
-        return { valid: false, errors };
-      }
-
-      // Try to parse with Mermaid to catch syntax errors
-      const lines = diagram.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-      const firstLine = lines[0];
-
-      // Check for valid diagram type
-      const validTypes = [
-        'graph', 'flowchart', 'sequenceDiagram', 'classDiagram',
-        'stateDiagram', 'pie', 'gantt', 'journey', 'gitgraph',
-        'erDiagram', 'mindmap', 'timeline', 'sankey', 'block'
-      ];
-
-      const hasValidType = validTypes.some(type =>
-        firstLine?.toLowerCase().startsWith(type.toLowerCase())
-      );
-
-      if (!hasValidType) {
-        warnings.push('Diagram type not clearly specified. Consider starting with a diagram type declaration.');
-      }
-
-      // Check for common syntax patterns
-      if (diagram.includes('-->') && diagram.includes('->')) {
-        warnings.push('Mixed arrow styles detected. Consider using consistent arrow types.');
-      }
-
-      // Check for unclosed brackets/parentheses
-      const openBrackets = (diagram.match(/\[/g) || []).length;
-      const closeBrackets = (diagram.match(/\]/g) || []).length;
-      if (openBrackets !== closeBrackets) {
-        errors.push('Unmatched square brackets detected');
-      }
-
-      const openParens = (diagram.match(/\(/g) || []).length;
-      const closeParens = (diagram.match(/\)/g) || []).length;
-      if (openParens !== closeParens) {
-        warnings.push('Unmatched parentheses detected');
-      }
-
-      return {
-        valid: errors.length === 0,
-        errors: errors.length > 0 ? errors : undefined,
-        warnings: warnings.length > 0 ? warnings : undefined
-      };
-    } catch (error: any) {
-      return {
-        valid: false,
-        errors: [`Validation error: ${error.message}`]
-      };
-    }
-  }
 
   private async openUI(autoOpen: boolean = true): Promise<any> {
     try {

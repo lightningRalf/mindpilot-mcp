@@ -1,26 +1,44 @@
-# Obscura MCP
+# Reveal MCP
 
 See through your agent's eyes. Visualize legacy code, architect new systems, understand everything.
 
-## ✨ Why Obscura?
+## ✨ Why Reveal?
 
-- **🧠 Visualize Anything**: Your MCP agent can instantly create diagrams of code architecture, process diagrams, or system designs
-- **👁️ See Through Agent's Eyes**: Watch in real-time as Claude explores codebases and builds mental models
+- **🧠 Visualize Almost Anything in Your Codebase**: Your MCP agent can instantly create diagrams of code architecture, process diagrams, or system designs
 - **📊 Export & Share**: Save any diagram as SVG to document discoveries or share insights with your team
 - **🔓 Secure-ish**: Diagrams are never sent to the cloud. Everything stays between you, your agent, and your agent's LLM provider(s).
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Claude Code
 
-- Node.js 18+
-- npm or yarn
+`claude mcp add reveal-mcp npx foo`
 
-### Installation
+### Cursor
 
-TO DO
+### VS Code
 
-### Development Installation
+### Windsurf
+
+## Using the MCP server
+
+In your coding agent make when you make requests to show me or create a diagram it should use the MCP server.
+
+You can also update your rules file to give specific instructions when to use reveal.
+
+## Example requests
+
+"Show me this area of the code that we have been discussing as a diagram"
+
+"Create a C4 diagram of this projects architcture."
+
+"Show me the oauth flow as a sequence diagram"
+
+## How it works
+
+Anthropic and OpenAI models seem to be well trained to generate valid mermaid syntax. The MCP is designed to accept mermaid syntax input to renders diagrams. More types of visualizations may be added in the future.
+
+## Development
 
 For active development with hot module replacement:
 
@@ -31,6 +49,8 @@ npm install
 ```bash
 npm run dev
 ```
+
+Run claud code with the `--debug` flag to see mcp errors
 
 This runs:
 - MCP server on port 3001 (API & WebSocket)
