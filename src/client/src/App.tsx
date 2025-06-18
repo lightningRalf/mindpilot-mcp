@@ -30,40 +30,7 @@ mermaid.initialize({
 });
 
 function App() {
-  const [diagram, setDiagram] = useState(`graph TB
-    subgraph "MCP Server"
-        MCP[MCP Protocol Handler]
-        WS[WebSocket Server<br/>:3001/ws]
-        API[REST API<br/>:3001/api]
-        FS[Fastify Static<br/>Server]
-    end
-
-    subgraph "React UI"
-        VITE[Vite Dev Server<br/>:5173]
-        APP[React App]
-        EDITOR[Editor Panel<br/>Mermaid Syntax]
-        PREVIEW[Preview Panel<br/>Rendered Diagram]
-        THEME[Dark/Light Toggle]
-    end
-
-    subgraph "Claude Desktop"
-        CLAUDE[Claude App]
-        TOOL[MCP Tools]
-    end
-
-    CLAUDE -->|stdio| MCP
-    TOOL -->|render_mermaid| MCP
-    APP -->|WebSocket| WS
-    APP -->|HTTP| API
-    VITE -->|Proxy| API
-    VITE -->|Proxy| WS
-    FS -->|Serves| APP
-    EDITOR -->|Auto-render| PREVIEW
-    THEME -->|Controls| PREVIEW
-
-    style MCP fill:#e1f5fe
-    style APP fill:#f3e5f5
-    style CLAUDE fill:#fff3e0`);
+  const [diagram, setDiagram] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem("mermaid-mcp-dark-mode");
     return saved === "true";
@@ -822,7 +789,7 @@ function App() {
       {/* Temporary Logo */}
       <div className="absolute bottom-4 right-4 pointer-events-none">
         <div className="text-xl font-bold text-right text-gray-600 dark:text-gray-400">
-          DEMO
+          AI TINKERERS DEMO
         </div>
       </div>
     </div>
