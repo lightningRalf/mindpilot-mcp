@@ -802,7 +802,7 @@ function App() {
 
               {/* MCP Server Status in bottom left when panel is collapsed */}
               {isCollapsed && (
-                <div className="absolute bottom-4 left-4">
+                <div className="absolute bottom-4 left-4 flex items-center" style={{ height: '42px' }}>
                   <MCPServerStatus
                     connectionStatus={connectionStatus}
                     onReconnect={manualReconnect}
@@ -816,7 +816,7 @@ function App() {
         </ResizablePanel>
       </ResizablePanelGroup>
       {/* Temporary Logo */}
-      <div className="absolute bottom-4 right-4 pointer-events-none">
+      <div className="absolute bottom-4 right-4 pointer-events-none flex items-center" style={{ height: '42px' }}>
         <div className="text-xl font-bold text-right text-gray-600 dark:text-gray-400">
           AI TINKERERS DEMO
         </div>
