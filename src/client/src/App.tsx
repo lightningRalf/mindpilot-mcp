@@ -201,13 +201,13 @@ function App() {
 
       websocket.onopen = () => {
         console.log("WebSocket connected to", websocket?.url);
-        
+
         // Clear the connection timeout
         if (connectTimeoutRef) {
           clearTimeout(connectTimeoutRef);
           connectTimeoutRef = null;
         }
-        
+
         setConnectionStatus("Connected");
         // Reset reconnect attempts on successful connection
         reconnectAttemptsRef.current = 0;
@@ -269,13 +269,13 @@ function App() {
 
       websocket.onerror = (error) => {
         console.error("WebSocket error:", error);
-        
+
         // Clear the connection timeout if it's still running
         if (connectTimeoutRef) {
           clearTimeout(connectTimeoutRef);
           connectTimeoutRef = null;
         }
-        
+
         // Don't set status here - let onclose handle it
         // The onclose event will handle reconnection
       };
@@ -817,8 +817,8 @@ function App() {
       </ResizablePanelGroup>
       {/* Temporary Logo */}
       <div className="absolute bottom-4 right-4 pointer-events-none flex items-center" style={{ height: '42px' }}>
-        <div className="text-xl font-bold text-right text-gray-600 dark:text-gray-400">
-          AI TINKERERS DEMO
+        <div className="text-xl font-bold text-right text-gray-400 dark:text-gray-400">
+          mindpilot
         </div>
       </div>
     </div>

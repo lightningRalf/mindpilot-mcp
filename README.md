@@ -36,7 +36,7 @@ Anthropic and OpenAI models are well trained to generate valid mermaid syntax. T
 ## Development Configuration
 Configure the MCP in your coding agent (using `claude` in this example)
 
-`claude mcp add dev-demo-mcp -- npx tsx <path to...>/src/server/server.ts`
+`claude mcp add mindpilot-mcp -- npx tsx <path to...>/src/server/server.ts`
 
 Run `claude` with the `--debug` flag if you need to see mcp errors
 
