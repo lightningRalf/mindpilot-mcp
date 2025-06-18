@@ -1,7 +1,7 @@
 # Mindpilot MCP
 See through your agent's eyes. Visualize legacy code, inspect complex subsystems, understand everything.
 
-![Screenshot](mindpilot-mcp.png)
+![Screenshot](https://raw.githubusercontent.com/abrinsmead/mindpilot-mcp/main/mindpilot-mcp.png)
 
 ## ✨ Why Mindpilot MCP?
 - **🧠 Visualize Almost Anything in Your Codebase**: Your MCP agent can instantly create code diagrams, architecture diagrams, process diagrams and more.
@@ -11,7 +11,7 @@ See through your agent's eyes. Visualize legacy code, inspect complex subsystems
 ## 🚀 Quick Start
 
 ### Claude Code
-`claude mcp add mindpilot-mcp -- npx @mindpilot/mcp@0.1.2`
+`claude mcp add mindpilot-mcp -- npx @mindpilot/mcp@0.1.3`
 
 ### Cursor
 TODO: Add configuration instructions
