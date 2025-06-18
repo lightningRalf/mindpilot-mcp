@@ -326,6 +326,14 @@ function App() {
 
     const renderDiagram = async () => {
       try {
+        // Clear previous content
+        previewRef.current!.innerHTML = "";
+
+        // Skip rendering if diagram is empty or null
+        if (!diagram || diagram.trim() === "") {
+          return;
+        }
+
         // Update theme
         mermaid.initialize({
           startOnLoad: false,
@@ -337,9 +345,6 @@ function App() {
             htmlLabels: true,
           },
         });
-
-        // Clear previous content
-        previewRef.current!.innerHTML = "";
 
         // Generate unique ID
         const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -686,7 +691,7 @@ function App() {
                   className={`flex-1 p-4 pl-[70px] font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-neutral-200"}`}
                   value={diagram}
                   onChange={(e) => setDiagram(e.target.value)}
-                  placeholder="Enter your Mermaid diagram here..."
+                  placeholder=""
                 />
                 <div
                   className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}
@@ -817,7 +822,7 @@ function App() {
       </ResizablePanelGroup>
       {/* Temporary Logo */}
       <div className="absolute bottom-4 right-4 pointer-events-none flex items-center" style={{ height: '42px' }}>
-        <div className="text-xl font-bold text-right text-gray-400 dark:text-gray-400">
+        <div className="text-xl font-bold text-right text-gray-300 dark:text-gray-700">
           mindpilot
         </div>
       </div>
