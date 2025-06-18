@@ -11,7 +11,7 @@ See through your agent's eyes. Visualize legacy code, inspect complex subsystems
 ## 🚀 Quick Start
 
 ### Claude Code
-`claude mcp add mindpilot-mcp -- npx @mindpilot/mcp@0.1.1`
+`claude mcp add mindpilot-mcp -- npx @mindpilot/mcp@0.1.2`
 
 ### Cursor
 TODO: Add configuration instructions
