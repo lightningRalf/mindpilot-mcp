@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "publishConfig": {
     "access": "public"
-  }
+  },
   "description": "See through your agent's eyes. Visualize legacy code, architect new systems, understand everything.",
   "type": "module",
   "main": "dist/server/server.js",
