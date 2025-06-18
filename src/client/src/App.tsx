@@ -822,8 +822,8 @@ function App() {
       </ResizablePanelGroup>
       {/* Temporary Logo */}
       <div className="absolute bottom-4 right-4 pointer-events-none flex items-center" style={{ height: '42px' }}>
-        <div className="text-xl font-bold text-right text-gray-300 dark:text-gray-700">
-          mindpilot
+        <div className="text-l font-bold text-right text-gray-400 dark:text-gray-600">
+         @mindpilot/mcp
         </div>
       </div>
     </div>

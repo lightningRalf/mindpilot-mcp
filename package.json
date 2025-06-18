@@ -1,6 +1,6 @@
 {
   "name": "@mindpilot/mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publishConfig": {
     "access": "public"
   },
@@ -8,8 +8,7 @@
   "type": "module",
   "main": "dist/server/server.js",
   "files": [
-    "dist/",
-    "mindpilot-mcp.png"
+    "dist/"
   ],
   "bin": {
     "mindpilot-mcp": "dist/server/server.js"
@@ -17,7 +16,7 @@
   "scripts": {
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd src/client && npm run build",
-    "build:server": "tsc && chmod +x dist/server/server.js",
+    "build:server": "tsc",
     "dev": "concurrently \"tsx src/server/server.ts\" \"cd src/client && npm run dev\"",
     "start": "NODE_ENV=production node dist/server/server.js",
     "prepare": "npm run build",
