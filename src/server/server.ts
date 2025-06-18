@@ -152,6 +152,22 @@ class MermaidMCPDemo {
             }
           }
           
+          // If no WebSocket clients are connected, open the browser automatically
+          if (this.wsClients.size === 0) {
+            const isProduction = process.env.NODE_ENV === 'production' || !process.stdin.isTTY;
+            const url = isProduction 
+              ? `http://localhost:${this.uiPort}` 
+              : 'http://localhost:5173';
+            
+            try {
+              await open(url);
+              // Give the browser time to connect via WebSocket
+              await new Promise(resolve => setTimeout(resolve, 1500));
+            } catch (error) {
+              // Ignore errors opening browser
+            }
+          }
+          
           // Broadcast to all WebSocket clients
           this.broadcastToClients({
             type: 'render_result',

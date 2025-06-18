@@ -1,11 +1,11 @@
 {
-  "name": "Obscura",
+  "name": "demo",
   "version": "0.1.0",
   "description": "See through your agent's eyes. Visualize legacy code, architect new systems, understand everything.",
   "type": "module",
   "main": "dist/server/server.js",
   "bin": {
-    "Obscura": "dist/server/server.js"
+    "demo": "dist/server/server.js"
   },
   "scripts": {
     "build": "npm run build:client && npm run build:server",
