@@ -4,6 +4,9 @@
   "description": "See through your agent's eyes. Visualize legacy code, architect new systems, understand everything.",
   "type": "module",
   "main": "dist/server/server.js",
+  "files": [
+    "dist/"
+  ],
   "bin": {
     "mindpilot-mcp": "dist/server/server.js"
   },
