@@ -190,8 +190,24 @@ function App() {
       const websocket = new WebSocket(wsUrl);
       websocketRef.current = websocket;
 
+      // Set a connection timeout
+      connectTimeoutRef = setTimeout(() => {
+        if (websocket.readyState === WebSocket.CONNECTING) {
+          console.log("WebSocket connection timeout - closing connection");
+          websocket.close();
+          // This will trigger onclose which handles reconnection
+        }
+      }, 10000); // 10 second timeout
+
       websocket.onopen = () => {
         console.log("WebSocket connected to", websocket?.url);
+        
+        // Clear the connection timeout
+        if (connectTimeoutRef) {
+          clearTimeout(connectTimeoutRef);
+          connectTimeoutRef = null;
+        }
+        
         setConnectionStatus("Connected");
         // Reset reconnect attempts on successful connection
         reconnectAttemptsRef.current = 0;
@@ -236,6 +252,12 @@ function App() {
         console.log("Current status:", connectionStatus);
         console.log("Reconnect attempts:", reconnectAttemptsRef.current);
 
+        // Clear the connection timeout if it's still running
+        if (connectTimeoutRef) {
+          clearTimeout(connectTimeoutRef);
+          connectTimeoutRef = null;
+        }
+
         // Immediately show reconnecting status to avoid red flash
         setConnectionStatus("Reconnecting...");
 
@@ -247,6 +269,13 @@ function App() {
 
       websocket.onerror = (error) => {
         console.error("WebSocket error:", error);
+        
+        // Clear the connection timeout if it's still running
+        if (connectTimeoutRef) {
+          clearTimeout(connectTimeoutRef);
+          connectTimeoutRef = null;
+        }
+        
         // Don't set status here - let onclose handle it
         // The onclose event will handle reconnection
       };

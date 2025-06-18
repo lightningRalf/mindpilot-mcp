@@ -36,6 +36,7 @@ class MermaidMCPDemo {
   private uiPort = 4000;
   private wsClients: Set<any> = new Set();
   private isShuttingDown = false;
+  private lastDiagram: { diagram: string; timestamp: string } | null = null;
 
   constructor() {
     this.server = new Server(
@@ -168,6 +169,14 @@ class MermaidMCPDemo {
             }
           }
           
+          // Cache the diagram for future connections
+          if (renderResult.success && renderResult.output) {
+            this.lastDiagram = {
+              diagram: renderResult.output,
+              timestamp: new Date().toISOString()
+            };
+          }
+          
           // Broadcast to all WebSocket clients
           this.broadcastToClients({
             type: 'render_result',
@@ -287,6 +296,20 @@ class MermaidMCPDemo {
         console.log('WebSocket client connected');
       }
       this.wsClients.add(ws);
+      
+      // Send the last diagram if available
+      if (this.lastDiagram) {
+        ws.send(JSON.stringify({
+          type: 'render_result',
+          success: true,
+          output: this.lastDiagram.diagram,
+          format: 'mermaid',
+          renderTime: 0,
+          clientSideRender: true,
+          cached: true,
+          timestamp: this.lastDiagram.timestamp
+        }));
+      }
 
       ws.on('message', async (data: Buffer) => {
         try {
