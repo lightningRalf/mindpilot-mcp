@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/server/server.js",
   "bin": {
-    "demo": "dist/server/server.js"
+    "mindpilot-mcp": "dist/server/server.js"
   },
   "scripts": {
     "build": "npm run build:client && npm run build:server",
@@ -31,8 +31,7 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "fastify": "^4.26.0",
     "mermaid": "11.6.0",
-    "open": "^9.1.0",
-    "playwright": "^1.42.0"
+    "open": "^9.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
