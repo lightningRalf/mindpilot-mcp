@@ -1,6 +1,6 @@
 {
   "name": "@mindpilot/mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publishConfig": {
     "access": "public"
   },
@@ -8,7 +8,8 @@
   "type": "module",
   "main": "dist/server/server.js",
   "files": [
-    "dist/"
+    "dist/",
+    "mindpilot-mcp.png"
   ],
   "bin": {
     "mindpilot-mcp": "dist/server/server.js"
