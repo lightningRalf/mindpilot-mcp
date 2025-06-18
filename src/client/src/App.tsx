@@ -97,6 +97,7 @@ function App() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const connectFunctionRef = useRef<(() => void) | null>(null);
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Shared reconnect logic with exponential backoff
   const attemptReconnect = useCallback((setupWebSocketFn: () => void) => {
@@ -249,7 +250,7 @@ function App() {
             setDiagram(data.output);
             // Theme is now controlled by UI only
             setStatus("Rendered successfully (via broadcast)");
-            
+
             // Reset view to fit new diagram
             setHasManuallyZoomed(false);
             // Small delay to allow diagram to render before fitting
@@ -464,57 +465,7 @@ function App() {
     setIsPanning(false);
   };
 
-  // Ref to track zoom timeout
-  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Wheel handler for zooming
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-
-    // Set zooming state to disable transitions
-    setIsZooming(true);
-
-    // Clear existing timeout
-    if (zoomTimeoutRef.current) {
-      clearTimeout(zoomTimeoutRef.current);
-    }
-
-    // Reset zooming state after wheel events stop
-    zoomTimeoutRef.current = setTimeout(() => {
-      setIsZooming(false);
-    }, 150);
-
-    // More natural zoom with logarithmic scaling
-    // Detect if using trackpad (smaller delta values) vs mouse wheel (larger, discrete values)
-    const isTrackpad = Math.abs(e.deltaY) < 50;
-    const zoomSensitivity = isTrackpad ? 0.01 : 0.02; // Balanced sensitivity
-    
-    const deltaY = e.deltaY;
-    
-    // Apply logarithmic scaling for more natural feel
-    const zoomFactor = Math.exp(-deltaY * zoomSensitivity);
-    const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.1), 5);
-
-    // Zoom towards mouse position
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) {
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      // Calculate the point in diagram space (before zoom)
-      const pointX = (x - rect.width / 2 - pan.x) / zoom;
-      const pointY = (y - rect.height / 2 - pan.y) / zoom;
-
-      // Calculate new pan to keep the same point under the mouse
-      setPan({
-        x: x - rect.width / 2 - pointX * newZoom,
-        y: y - rect.height / 2 - pointY * newZoom,
-      });
-    }
-
-    setZoom(newZoom);
-    setHasManuallyZoomed(true);
-  };
+  // Wheel handler for zooming is now attached in useEffect with passive: false
 
   // Apply dark mode class to body and save to localStorage
   useEffect(() => {
@@ -606,9 +557,67 @@ function App() {
     };
   }, []);
 
+  // Attach wheel handler to preview container with passive: false
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleContainerWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      // Set zooming state to disable transitions
+      setIsZooming(true);
+
+      // Clear existing timeout
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+      }
+
+      // Reset zooming state after wheel events stop
+      zoomTimeoutRef.current = setTimeout(() => {
+        setIsZooming(false);
+      }, 150);
+
+      // More natural zoom with logarithmic scaling
+      // Detect if using trackpad (smaller delta values) vs mouse wheel (larger, discrete values)
+      const isTrackpad = Math.abs(e.deltaY) < 50;
+      const zoomSensitivity = isTrackpad ? 0.01 : 0.02; // Balanced sensitivity
+
+      const deltaY = e.deltaY;
+
+      // Apply logarithmic scaling for more natural feel
+      const zoomFactor = Math.exp(-deltaY * zoomSensitivity);
+      const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.1), 5);
+
+      // Zoom towards mouse position
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Calculate the point in diagram space (before zoom)
+      const pointX = (x - rect.width / 2 - pan.x) / zoom;
+      const pointY = (y - rect.height / 2 - pan.y) / zoom;
+
+      // Calculate new pan to keep the same point under the mouse
+      setPan({
+        x: x - rect.width / 2 - pointX * newZoom,
+        y: y - rect.height / 2 - pointY * newZoom,
+      });
+
+      setZoom(newZoom);
+      setHasManuallyZoomed(true);
+    };
+
+    container.addEventListener('wheel', handleContainerWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleContainerWheel);
+    };
+  }, [zoom, pan]);
+
   return (
     <div
-      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-slate-100"}`}
+      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-neutral-100"}`}
     >
       <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
         {isCollapsed && (
@@ -663,7 +672,7 @@ function App() {
           }}
         >
           <div
-            className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-slate-200"}`}
+            className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}
           >
             {!isCollapsed && (
               <>
@@ -678,7 +687,7 @@ function App() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <textarea
-                  className={`flex-1 p-4 pl-[70px] font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-slate-200"}`}
+                  className={`flex-1 p-4 pl-[70px] font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-neutral-200"}`}
                   value={diagram}
                   onChange={(e) => setDiagram(e.target.value)}
                   placeholder="Enter your Mermaid diagram here..."
@@ -703,7 +712,7 @@ function App() {
 
         <ResizablePanel defaultSize={50}>
           <div
-            className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-slate-100"}`}
+            className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-neutral-100"}`}
           >
             <div className="absolute z-10 top-4 right-4 flex items-center gap-3">
               <Button
@@ -736,7 +745,7 @@ function App() {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              onWheel={handleWheel}
+              // onWheel handler moved to useEffect with passive: false
               style={{ cursor: isPanning ? "grabbing" : "grab" }}
             >
               <div
@@ -755,7 +764,7 @@ function App() {
               </div>
 
               {/* Zoom Controls */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-100/90 dark:bg-sky-950/90 backdrop-blur-sm rounded-lg border border-gray-400 dark:border-gray-600 p-1">
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-50/90 dark:bg-sky-900/90 backdrop-blur-sm rounded-lg border border-gray-400 dark:border-gray-600 p-1">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -783,7 +792,7 @@ function App() {
                 >
                   <ZoomIn className="h-4 w-4" />
                 </Button>
-                <div className="w-px h-6 bg-sky-300 dark:bg-sky-600 mx-1" />
+                <div className="w-px h-6 bg-sky-200 dark:bg-sky-500 mx-1" />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -810,6 +819,12 @@ function App() {
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      {/* Temporary Logo */}
+      <div className="absolute bottom-4 right-4 pointer-events-none">
+        <div className="text-xl font-bold text-right text-gray-600 dark:text-gray-400">
+          DEMO
+        </div>
+      </div>
     </div>
   );
 }

@@ -37,7 +37,7 @@ export function MCPServerStatus({
         {isDisconnected ? (
           <button
             onClick={onReconnect}
-            className="text-xs underline hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
+            className="text-xs underline hover:text-sky-500 dark:hover:text-sky-300 transition-colors"
           >
             Reconnect
           </button>
@@ -54,7 +54,7 @@ export function MCPServerStatus({
       <button
         onClick={onReconnect}
         className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 border border-gray-400 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-500 transition-colors ${
-          isDarkMode ? "bg-gray-800/90" : "bg-sky-100/90"
+          isDarkMode ? "bg-gray-800/90" : "bg-sky-50/90"
         }`}
       >
         <div className="w-2 h-2 rounded-full bg-red-500" />
@@ -67,7 +67,7 @@ export function MCPServerStatus({
   return (
     <div
       className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 ${
-        isDarkMode ? "bg-gray-800/90" : "bg-slate-100/90"
+        isDarkMode ? "bg-gray-800/90" : "bg-neutral-100/90"
       }`}
     >
       <div

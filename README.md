@@ -40,17 +40,10 @@ Anthropic and OpenAI models seem to be well trained to generate valid mermaid sy
 
 ## Development
 
-For active development with hot module replacement:
 
-```bash
-npm install
-```
+claude mcp add mermaid-dev -- npx tsx /Users/alex/Projects/mermaid-mcp/src/server/server.ts
 
-```bash
-npm run dev
-```
-
-Run claud code with the `--debug` flag to see mcp errors
+Run `claude` with the `--debug` flag to see mcp errors
 
 This runs:
 - MCP server on port 3001 (API & WebSocket)
