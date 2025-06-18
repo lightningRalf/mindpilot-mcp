@@ -6,3 +6,7 @@ dist/
 
 # OS files
 .DS_Store
+
+# Tools
+.claude/
+CLAUDE.md

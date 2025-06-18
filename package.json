@@ -1,5 +1,5 @@
 {
-  "name": "demo",
+  "name": "@mindpilot/mcp",
   "version": "0.1.0",
   "description": "See through your agent's eyes. Visualize legacy code, architect new systems, understand everything.",
   "type": "module",
@@ -23,7 +23,7 @@
     "rendering",
     "model-context-protocol"
   ],
-  "author": "Your Name",
+  "author": "Alex Brinsmead",
   "license": "MIT",
   "dependencies": {
     "@fastify/static": "^7.0.0",
