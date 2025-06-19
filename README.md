@@ -20,7 +20,18 @@ TODO: Add configuration instructions
 TODO: Add configuration instructions
 
 ### Windsurf
-TODO: Add configuration instructions
+
+Under Settings > Windsurf Settings > Manage Plugins, click `view raw config` and set it to:
+```
+{
+    "mcpServers": {
+        "mindpilot": {
+        "command": "npx",
+        "args": ["-y", "@mindpilot/mcp@latest"]
+        }
+    }
+}
+```
 
 ## Using the MCP server
 After configuring the MCP in your coding agent you can make requests like "create a diagram about x" and it should use the MCP server to render mermaid diagrams for you in a browser connected to the MCP server.
