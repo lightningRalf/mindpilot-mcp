@@ -17,6 +17,7 @@ import fastifyStatic from "@fastify/static";
 import path from "path";
 import { fileURLToPath } from "url";
 import open from "open";
+import { parseArgs } from "node:util";
 import {
   validateMermaidSyntax,
   getValidDiagramTypes,
@@ -39,12 +40,13 @@ interface RenderResult {
 class MermaidMCPDemo {
   private server: Server;
   private fastify?: FastifyInstance;
-  private uiPort = 4000;
+  private port: number;
   private wsClients: Set<any> = new Set();
   private isShuttingDown = false;
   private lastDiagram: { diagram: string; timestamp: string } | null = null;
 
-  constructor() {
+  constructor(port: number = 4000) {
+    this.port = port;
     this.server = new Server(
       {
         name: "mindpilot-mcp",
@@ -157,7 +159,7 @@ class MermaidMCPDemo {
             await this.setupUIServer();
             try {
               await this.fastify!.listen({
-                port: this.uiPort,
+                port: this.port,
                 host: "0.0.0.0",
               });
             } catch (err: any) {
@@ -170,10 +172,9 @@ class MermaidMCPDemo {
 
           // If no WebSocket clients are connected, open the browser automatically
           if (this.wsClients.size === 0) {
-            const isProduction =
-              process.env.NODE_ENV === "production" || !process.stdin.isTTY;
+            const isProduction = process.env.NODE_ENV !== "development";
             const url = isProduction
-              ? `http://localhost:${this.uiPort}`
+              ? `http://localhost:${this.port}`
               : "http://localhost:5173";
 
             try {
@@ -248,15 +249,10 @@ class MermaidMCPDemo {
 
     // Check if we're in MCP mode (when stdin is not a TTY)
     const isMCPMode = !process.stdin.isTTY;
-    // Simple mode detection based on NODE_ENV
-    const isProduction = process.env.NODE_ENV === "production";
+    // Default to production mode unless explicitly in development
+    const isProduction = process.env.NODE_ENV !== "development";
 
-    // Only log if not in MCP mode
-    if (process.stdin.isTTY) {
-      console.log(
-        `🚀 Server running in ${isProduction ? "PRODUCTION" : "DEVELOPMENT"} mode`,
-      );
-    }
+    // Don't log mode info in setupUIServer - it's logged in start()
 
     // Serve static files in production mode OR when running as MCP server
     if (isProduction || isMCPMode) {
@@ -441,7 +437,7 @@ class MermaidMCPDemo {
 
         // Start Fastify server
         try {
-          await this.fastify!.listen({ port: this.uiPort, host: "0.0.0.0" });
+          await this.fastify!.listen({ port: this.port, host: "0.0.0.0" });
 
           // Add a small delay to ensure the server is fully ready
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -453,15 +449,14 @@ class MermaidMCPDemo {
         }
       }
 
-      const url = `http://localhost:${this.uiPort}`;
+      const url = `http://localhost:${this.port}`;
 
       // Verify server is actually listening before returning success
       const isListening = this.fastify?.server?.listening || false;
 
       if (!isListening) {
         throw new Error(
-          "Fastify server failed to start - not listening on port " +
-            this.uiPort,
+          "Fastify server failed to start - not listening on port " + this.port,
         );
       }
 
@@ -474,7 +469,7 @@ class MermaidMCPDemo {
       return {
         success: true,
         url,
-        port: this.uiPort,
+        port: this.port,
         message: autoOpen ? "UI opened in browser" : "UI server started",
         wsClients: this.wsClients.size,
         serverListening: isListening,
@@ -491,7 +486,9 @@ class MermaidMCPDemo {
 
   async start() {
     // Check if we're running as an MCP server (when stdin is a pipe/not a TTY)
-    const isMCPMode = !process.stdin.isTTY;
+    // In development mode, we're not in MCP mode even if stdin is not a TTY
+    const isMCPMode =
+      !process.stdin.isTTY && process.env.NODE_ENV !== "development";
 
     if (isMCPMode) {
       // MCP mode - start both MCP server and UI server
@@ -501,7 +498,7 @@ class MermaidMCPDemo {
       // Also start the UI server in MCP mode
       await this.setupUIServer();
       try {
-        await this.fastify!.listen({ port: this.uiPort, host: "0.0.0.0" });
+        await this.fastify!.listen({ port: this.port, host: "0.0.0.0" });
       } catch (err: any) {
         // Server might already be running, which is OK
         if (err.code !== "EADDRINUSE") {
@@ -518,34 +515,29 @@ class MermaidMCPDemo {
 
       // Start Fastify server
       try {
-        await this.fastify!.listen({ port: this.uiPort, host: "0.0.0.0" });
-        console.log(`🌐 UI Server running on http://localhost:${this.uiPort}`);
+        await this.fastify!.listen({ port: this.port, host: "0.0.0.0" });
+        console.log(`Mindpilot MCP server running on port ${this.port}`);
       } catch (err) {
         console.error("Failed to start server:", err);
         process.exit(1);
       }
 
-      // DO NOT start MCP server in standalone mode - it's only for Claude Desktop
-      console.log("🔧 Running in standalone mode (no MCP server)");
-
       // Auto-open UI
-      if (process.env.NODE_ENV === "production") {
+      if (process.env.NODE_ENV !== "development") {
         // Production mode - open the MCP server port
         try {
-          await open(`http://localhost:${this.uiPort}`);
-          console.log(
-            `🚀 Production server opened at http://localhost:${this.uiPort}`,
-          );
+          await open(`http://localhost:${this.port}`);
+          // Browser opened successfully
         } catch (error) {
           console.log(
-            `ℹ️  Could not auto-open browser. Visit http://localhost:${this.uiPort} manually`,
+            `ℹ️  Could not auto-open browser. Visit http://localhost:${this.port} manually`,
           );
         }
       } else {
         // Dev mode - open the Vite dev server port
         try {
           await open("http://localhost:5173");
-          console.log("🚀 Development UI opened at http://localhost:5173");
+          // Browser opened successfully
         } catch (error) {
           console.log(
             "ℹ️  Could not auto-open browser. Visit http://localhost:5173 manually",
@@ -597,8 +589,26 @@ class MermaidMCPDemo {
   }
 }
 
+// Parse command line arguments
+const { values } = parseArgs({
+  options: {
+    port: {
+      type: "string",
+      short: "p",
+      default: "4000",
+    },
+  },
+});
+
+// Parse and validate port
+const port = parseInt(values.port as string, 10);
+if (isNaN(port) || port < 1 || port > 65535) {
+  console.error(`Invalid port number: ${values.port}`);
+  process.exit(1);
+}
+
 // Start the demo server
-const demo = new MermaidMCPDemo();
+const demo = new MermaidMCPDemo(port);
 
 // Handle graceful shutdown
 process.on("SIGINT", async () => {
