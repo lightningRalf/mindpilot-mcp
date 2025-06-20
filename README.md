@@ -3,57 +3,95 @@ See through your agent's eyes. Visualize legacy code, inspect complex subsystems
 
 ![Screenshot](https://raw.githubusercontent.com/abrinsmead/mindpilot-mcp/main/mindpilot-mcp.png)
 
-## ✨ Why Mindpilot MCP?
-- **🧠 Visualize Almost Anything in Your Codebase**: Your MCP agent can instantly create code diagrams, architecture diagrams, process diagrams and more.
-- **📊 Export & Share**: Save any diagram as SVG.
-- **🔓 Local Processing**: Diagrams are never sent to the cloud. Everything stays between you, your agent, and your agent's LLM provider(s).
+## Why Mindpilot?
+- **Visualize Almost Anything**: Ask your coding agent to generate on-demand architecture, code, and process diagrams to accelerate your understanding of complex concepts.
+- **Export & Share**: Save any diagram as a Mermaid text file or an SVG image.
+- **Local Processing**: Diagrams are never sent to the cloud. Everything stays between you, your agent, and your agent's LLM provider(s).
 
-## 🚀 Quick Start
+## Quickstarts
 
 ### Claude Code
-`claude mcp add mindpilot-mcp -- npx @mindpilot/mcp`
+`claude mcp add mindpilot-mcp -- npx @mindpilot/mcp@latest`
 
 ### Cursor
-TODO: Add configuration instructions
+Under `Settings` > `Cursor Settings` > `MCP` > Click `Add new global MCP server` and configure mindpilot in the `mcpServers` object.
 
-### VS Code
-TODO: Add configuration instructions
-
-### Windsurf
-
-Under Settings > Windsurf Settings > Manage Plugins, click `view raw config` and set it to:
 ```
 {
-    "mcpServers": {
-        "mindpilot": {
-        "command": "npx",
-        "args": ["-y", "@mindpilot/mcp@latest"]
-        }
+  "mcpServers": {
+    "mindpilot": {
+      "command": "npx",
+      "args": ["-y", "@mindpilot/mcp@latest"]
     }
+  }
 }
 ```
 
+### VS Code MCP Preview
+Follow the instructions here for enabling MCPs in VS Code:  https://code.visualstudio.com/docs/copilot/chat/mcp-servers
+
+Go to `Settings` > `Features` > `MCP`, then click `Edit in settings json`
+
+Then add mindpilot to your MCP configuration:
+
+```
+{
+  "mcp": {
+    "servers": {
+      "mindpilot": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["@mindpilot/mcp@latest"]
+      }
+    }
+  }
+}
+```
+
+### Windsurf
+
+Under `Settings` > `Windsurf Settings` > `Manage Plugins`, click `view raw config` and configure mindpilot in the `mcpServers` object:
+
+```
+{
+  "mcpServers": {
+    "mindpilot": {
+      "command": "npx",
+      "args": ["-y", "@mindpilot/mcp@latest"]
+    }
+  }
+}
+```
+
+### Zed
+In the AI Thread panel click on the three dots `...`, then click `Add Custom Server...`
+
+In the `Command to run MCPserver` field enter `npx @mindpilot/mcp@latest` and click `Add Server`.
+
+## Configuration Options
+- **Port**: The server defaults to port 4000 but can be configured using the `--port` command line switch.
+
 ## Using the MCP server
-After configuring the MCP in your coding agent you can make requests like "create a diagram about x" and it should use the MCP server to render mermaid diagrams for you in a browser connected to the MCP server.
+After configuring the MCP in your coding agent you can make requests like "create a diagram about x" and it should use the MCP server to render Mermaid diagrams for you in a browser connected to the MCP server.
 
 You can optionally update your agent's rules file to give specific instructions about when to use mindpilot-mcp.
 
 ### Example requests
-- "Show me the state machine for websocket connection logic"
+- "Show me the state machine for WebSocket connection logic"
 - "Create a C4 context diagram of this project's architecture."
-- "Show me the oauth flow as a sequence diagram"
+- "Show me the OAuth flow as a sequence diagram"
 
 ## How it works
-Anthropic and OpenAI models are well trained to generate valid mermaid syntax. The MCP is designed to accept mermaid syntax and render diagrams in a browser app running on http://localhost:4000
+Anthropic and OpenAI models are well trained to generate valid Mermaid syntax. The MCP is designed to accept Mermaid syntax and render diagrams in a browser app running on http://localhost:4000 (default port).
 
 ## Development Configuration
 Configure the MCP in your coding agent (using `claude` in this example)
 
 `claude mcp add mindpilot-mcp -- npx tsx <path to...>/src/server/server.ts`
 
-Run `claude` with the `--debug` flag if you need to see mcp errors
+Run `claude` with the `--debug` flag if you need to see MCP errors
 
-Start the development client (vite) to get hot module reloading while developing.
+Start the development client (Vite) to get hot module reloading while developing.
 
 `npm run dev`
 
