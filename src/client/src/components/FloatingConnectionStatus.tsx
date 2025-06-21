@@ -3,7 +3,7 @@ import { MCPServerStatus } from '@/components/MCPServerStatus';
 
 interface FloatingConnectionStatusProps {
   isVisible: boolean;
-  connectionStatus: 'connected' | 'disconnected' | 'connecting';
+  connectionStatus: string;
   onReconnect: () => void;
   isDarkMode: boolean;
   className?: string;

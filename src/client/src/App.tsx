@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
@@ -8,12 +8,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
-  Sun,
-  Moon,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
 } from "lucide-react";
 import mermaid from "mermaid";
 import { MCPServerStatus } from "@/components/MCPServerStatus";
@@ -21,6 +15,7 @@ import { Branding } from "@/components/Branding";
 import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus";
 import { ZoomControls } from "@/components/ZoomControls";
 import { TopRightToolBar } from "@/components/TopRightToolBar";
+import { useWebSocketStateMachine } from "@/hooks/useWebSocketStateMachine";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -47,7 +42,6 @@ function App() {
     return saved ? parseFloat(saved) : 50;
   });
   const [status, setStatus] = useState("Ready");
-  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -57,271 +51,71 @@ function App() {
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<any>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const maxReconnectDelay = 30000; // Max 30 seconds
-  const initialReconnectDelay = 1000; // Start with 1 second
-  const maxReconnectAttempts = 5; // Stop after 5 attempts (1s, 2s, 4s, 8s, 16s)
-
-  // Store WebSocket instance in a ref so it can be accessed from other functions
-  const websocketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const connectFunctionRef = useRef<(() => void) | null>(null);
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Shared reconnect logic with exponential backoff
-  const attemptReconnect = useCallback((setupWebSocketFn: () => void) => {
-    const currentAttempt = reconnectAttemptsRef.current;
+  // WebSocket connection setup - memoize to prevent re-calculation
+  const wsUrl = useMemo(() => {
+    const currentPort = window.location.port;
+    const isDev = currentPort === "5173";
 
-    // Check if we've exceeded max attempts
-    if (currentAttempt >= maxReconnectAttempts) {
-      // All attempts exhausted - show red disconnected state
-      setConnectionStatus("Connection timed out");
-      console.log("Max reconnection attempts reached. Giving up.");
-      return;
-    }
+    // In dev mode, always connect to port 4000 (MCP server)
+    // In production, use the same port as the page
+    const url = isDev
+      ? `ws://${window.location.hostname}:4000/ws`
+      : `ws://${window.location.hostname}:${window.location.port}/ws`;
 
-    // Calculate exponential backoff delay based on current attempt
-    const delay = Math.min(
-      initialReconnectDelay * Math.pow(2, currentAttempt),
-      maxReconnectDelay,
-    );
+    console.log('[WebSocket Setup]', {
+      isDev,
+      currentPort,
+      hostname: window.location.hostname,
+      wsUrl: url,
+      fullUrl: window.location.href,
+      note: isDev ? 'Dev mode - connecting to MCP server on port 4000' : 'Production mode - using same port'
+    });
 
-    // Increment for next time
-    reconnectAttemptsRef.current++;
+    return url;
+  }, []); // Empty deps - URL shouldn't change during the session
 
-    // Update with countdown after brief delay
-    setTimeout(() => {
-      setConnectionStatus(`Reconnecting in ${Math.round(delay / 1000)}s...`);
-    }, 50);
+  const { state, reconnect } = useWebSocketStateMachine({
+    url: wsUrl,
+    onMessage: (data) => {
+      console.log('[WebSocket Message]', data);
+      if (data.type === "render_result" && data.success && data.output) {
+        console.log("Updating diagram from WebSocket broadcast");
+        setDiagram(data.output);
+        setStatus("Rendered successfully (via broadcast)");
 
-    // Clear any existing countdown
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-    }
-
-    // Countdown timer
-    let remainingSeconds = Math.round(delay / 1000);
-    countdownIntervalRef.current = setInterval(() => {
-      remainingSeconds--;
-      if (remainingSeconds <= 0) {
-        clearInterval(countdownIntervalRef.current!);
-        countdownIntervalRef.current = null;
-        setConnectionStatus("Connecting...");
-      } else {
-        setConnectionStatus(`Reconnecting in ${remainingSeconds}s...`);
+        // Reset view to fit new diagram
+        setHasManuallyZoomed(false);
+        // Small delay to allow diagram to render before fitting
+        setTimeout(() => {
+          handleFitToScreen(true);
+        }, 100);
       }
-    }, 1000);
+    },
+  });
 
-    console.log(
-      `Scheduling reconnect attempt ${reconnectAttemptsRef.current} of ${maxReconnectAttempts} in ${delay}ms`,
-    );
-
-    // Clear any existing timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
+  // Map state machine states to UI status messages
+  const connectionStatus = (() => {
+    switch (state) {
+      case 'connected': return 'Connected';
+      case 'connecting': return 'Connecting...';
+      case 'reconnecting': return 'Reconnecting...';
+      case 'failed': return 'Disconnected';
+      case 'disconnected': return 'Disconnected';
+      default: return 'Disconnected';
     }
+  })();
 
-    // Schedule reconnect
-    reconnectTimeoutRef.current = setTimeout(() => {
-      console.log(
-        `Executing reconnect attempt ${reconnectAttemptsRef.current}`,
-      );
-      setupWebSocketFn();
-    }, delay);
-  }, []);
-
-  // Manual reconnect function
-  const manualReconnect = () => {
-    console.log("Manual reconnect requested");
-    // Clear any pending reconnect
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    // Clear any countdown
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-
-    // Reset attempts for manual reconnect
-    reconnectAttemptsRef.current = 0;
-    setConnectionStatus("Reconnecting...");
-
-    // Check if websocket exists and is open
-    if (
-      websocketRef.current &&
-      websocketRef.current.readyState !== WebSocket.CLOSED
-    ) {
-      // Close it, which will trigger onclose handler
-      websocketRef.current.close();
-    } else {
-      // Websocket is already closed, need to manually trigger reconnect
-      // We need to get the connect function from the useEffect scope
-      // So we'll use a ref to store it
-      if (connectFunctionRef.current) {
-        attemptReconnect(connectFunctionRef.current);
-      }
-    }
-  };
-
-  // WebSocket connection with auto-reconnect
+  // Cleanup zoom timeout on unmount
   useEffect(() => {
-    let isCleaningUp = false;
-    let connectTimeoutRef: NodeJS.Timeout | null = null;
-
-    const connect = () => {
-      // Don't attempt to connect if we're cleaning up
-      if (isCleaningUp) return;
-
-      // Clean up existing websocket if any
-      if (
-        websocketRef.current &&
-        websocketRef.current.readyState !== WebSocket.CLOSED
-      ) {
-        websocketRef.current.close();
-      }
-
-      // Detect if we're in development mode (Vite dev server)
-      const isDev = window.location.port === "5173";
-      const wsUrl = isDev
-        ? `ws://${window.location.hostname}:5173/ws` // Use Vite proxy
-        : `ws://${window.location.hostname}:${window.location.port}/ws`; // Use same port as served
-
-      console.log("Attempting WebSocket connection to", wsUrl);
-      const websocket = new WebSocket(wsUrl);
-      websocketRef.current = websocket;
-
-      // Set a connection timeout
-      connectTimeoutRef = setTimeout(() => {
-        if (websocket.readyState === WebSocket.CONNECTING) {
-          console.log("WebSocket connection timeout - closing connection");
-          websocket.close();
-          // This will trigger onclose which handles reconnection
-        }
-      }, 10000); // 10 second timeout
-
-      websocket.onopen = () => {
-        console.log("WebSocket connected to", websocket?.url);
-
-        // Clear the connection timeout
-        if (connectTimeoutRef) {
-          clearTimeout(connectTimeoutRef);
-          connectTimeoutRef = null;
-        }
-
-        setConnectionStatus("Connected");
-        // Reset reconnect attempts on successful connection
-        reconnectAttemptsRef.current = 0;
-        // Clear any pending reconnect timeout on successful connection
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-        // Clear any countdown interval
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-          countdownIntervalRef.current = null;
-        }
-      };
-
-      websocket.onmessage = async (event) => {
-        console.log("WebSocket message received:", event.data);
-        try {
-          const data = JSON.parse(event.data);
-
-          if (data.type === "render_result" && data.success && data.output) {
-            console.log("Updating diagram from WebSocket broadcast");
-            setDiagram(data.output);
-            // Theme is now controlled by UI only
-            setStatus("Rendered successfully (via broadcast)");
-
-            // Reset view to fit new diagram
-            setHasManuallyZoomed(false);
-            // Small delay to allow diagram to render before fitting
-            setTimeout(() => {
-              handleFitToScreen(true);
-            }, 100);
-          }
-        } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
-        }
-      };
-
-      websocket.onclose = (event) => {
-        console.log("WebSocket closed:", event.code, event.reason);
-        console.log("Close code:", event.code, "Clean:", event.wasClean);
-        console.log("Current status:", connectionStatus);
-        console.log("Reconnect attempts:", reconnectAttemptsRef.current);
-
-        // Clear the connection timeout if it's still running
-        if (connectTimeoutRef) {
-          clearTimeout(connectTimeoutRef);
-          connectTimeoutRef = null;
-        }
-
-        // Immediately show reconnecting status to avoid red flash
-        setConnectionStatus("Reconnecting...");
-
-        // Only reconnect if we're not cleaning up
-        if (!isCleaningUp) {
-          attemptReconnect(connect);
-        }
-      };
-
-      websocket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-
-        // Clear the connection timeout if it's still running
-        if (connectTimeoutRef) {
-          clearTimeout(connectTimeoutRef);
-          connectTimeoutRef = null;
-        }
-
-        // Don't set status here - let onclose handle it
-        // The onclose event will handle reconnection
-      };
-    };
-
-    // Store connect function in ref for manual reconnect
-    connectFunctionRef.current = connect;
-
-    // Initial connection
-    connect();
-
-    // Cleanup function
     return () => {
-      console.log("Cleaning up WebSocket connection");
-      isCleaningUp = true;
-
-      if (connectTimeoutRef) {
-        clearTimeout(connectTimeoutRef);
-      }
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-
       if (zoomTimeoutRef.current) {
         clearTimeout(zoomTimeoutRef.current);
         zoomTimeoutRef.current = null;
       }
-
-      if (
-        websocketRef.current &&
-        websocketRef.current.readyState !== WebSocket.CLOSED
-      ) {
-        websocketRef.current.close();
-      }
     };
-  }, []); // Empty dependency array - we don't want to recreate WebSocket on status changes
+  }, []);
 
   // Render diagram
   useEffect(() => {
@@ -700,7 +494,7 @@ function App() {
                 >
                   <MCPServerStatus
                     connectionStatus={connectionStatus}
-                    onReconnect={manualReconnect}
+                    onReconnect={reconnect}
                     isDarkMode={isDarkMode}
                     isCollapsedView={false}
                   />
@@ -769,7 +563,7 @@ function App() {
       <FloatingConnectionStatus
         isVisible={isCollapsed}
         connectionStatus={connectionStatus}
-        onReconnect={manualReconnect}
+        onReconnect={reconnect}
         isDarkMode={isDarkMode}
       />
 
