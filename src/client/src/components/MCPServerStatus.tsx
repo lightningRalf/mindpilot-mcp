@@ -54,7 +54,7 @@ export function MCPServerStatus({
       <button
         onClick={onReconnect}
         className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 border border-gray-400 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-500 transition-colors ${
-          isDarkMode ? "bg-gray-800/90" : "bg-white/100"
+          isDarkMode ? "bg-gray-800/90" : "bg-neutral-300"
         }`}
       >
         <div className="w-2 h-2 rounded-full bg-red-500" />
