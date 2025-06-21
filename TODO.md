@@ -5,9 +5,13 @@
 - Auto reconnect stale browser windows
 
 ### Should
+- Revisit keyboard shortcuts
+- Favicon
 - CI workflow
 - Refactor server vibe code
-- Refactor client vibe code
+- Refactor client code
+  - Componentize
+  - Clean up light and dark colors
   - WebSocket state machine
 - Tests
   - Mermaid validator

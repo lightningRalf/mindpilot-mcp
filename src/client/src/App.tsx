@@ -17,8 +17,11 @@ import {
 } from "lucide-react";
 import mermaid from "mermaid";
 import { MCPServerStatus } from "@/components/MCPServerStatus";
+import { Branding } from "@/components/Branding";
+import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus";
+import { ZoomControls } from "@/components/ZoomControls";
+import { TopRightToolBar } from "@/components/TopRightToolBar";
 
-// Initialize Mermaid
 mermaid.initialize({
   startOnLoad: false,
   theme: "default",
@@ -32,15 +35,15 @@ mermaid.initialize({
 function App() {
   const [diagram, setDiagram] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("mermaid-mcp-dark-mode");
+    const saved = localStorage.getItem("mindpilot-mcp-dark-mode");
     return saved === "true";
   });
   const [isCollapsed, setIsCollapsed] = useState(() => {
-    const saved = localStorage.getItem("mermaid-mcp-panel-collapsed");
+    const saved = localStorage.getItem("mindpilot-mcp-panel-collapsed");
     return saved === "true";
   });
   const [panelSize, setPanelSize] = useState(() => {
-    const saved = localStorage.getItem("mermaid-mcp-panel-size");
+    const saved = localStorage.getItem("mindpilot-mcp-panel-size");
     return saved ? parseFloat(saved) : 50;
   });
   const [status, setStatus] = useState("Ready");
@@ -466,8 +469,6 @@ function App() {
     setIsPanning(false);
   };
 
-  // Wheel handler for zooming is now attached in useEffect with passive: false
-
   // Apply dark mode class to body and save to localStorage
   useEffect(() => {
     if (isDarkMode) {
@@ -475,12 +476,12 @@ function App() {
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("mermaid-mcp-dark-mode", isDarkMode.toString());
+    localStorage.setItem("mindpilot-mcp-dark-mode", isDarkMode.toString());
   }, [isDarkMode]);
 
   // Save collapsed state to localStorage
   useEffect(() => {
-    localStorage.setItem("mermaid-mcp-panel-collapsed", isCollapsed.toString());
+    localStorage.setItem("mindpilot-mcp-panel-collapsed", isCollapsed.toString());
   }, [isCollapsed]);
 
   // Apply initial collapsed state
@@ -618,7 +619,7 @@ function App() {
 
   return (
     <div
-      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-neutral-100"}`}
+      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-neutral-900"}`}
     >
       <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
         {isCollapsed && (
@@ -644,7 +645,7 @@ function App() {
           onResize={(size) => {
             if (size > 0) {
               setPanelSize(size);
-              localStorage.setItem("mermaid-mcp-panel-size", size.toString());
+              localStorage.setItem("mindpilot-mcp-panel-size", size.toString());
             }
           }}
           onCollapse={() => {
@@ -672,6 +673,7 @@ function App() {
             }, 300);
           }}
         >
+          {/* panel status bar */}
           <div
             className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}
           >
@@ -715,30 +717,15 @@ function App() {
           <div
             className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-neutral-100"}`}
           >
-            <div className="absolute z-10 top-4 right-4 flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleExport}
-                title="Export SVG"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                title={
-                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
-                }
-              >
-                {isDarkMode ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            {/* Zoom Controls */}
+            <ZoomControls
+              zoom={zoom}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onZoomReset={handleZoomReset}
+              onFitToScreen={() => handleFitToScreen()}
+            />
+
             <div
               ref={containerRef}
               className={`flex-1 overflow-hidden relative ${isDarkMode ? "bg-gray-850" : ""}`}
@@ -764,68 +751,31 @@ function App() {
                 />
               </div>
 
-              {/* Zoom Controls */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-sky-50/90 dark:bg-sky-900/90 backdrop-blur-sm rounded-lg border border-gray-400 dark:border-gray-600 p-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleZoomOut}
-                  title="Zoom out"
-                  className="h-8 w-8 p-0"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleZoomReset}
-                  title="Reset zoom"
-                  className="h-8 px-3 text-sm min-w-[60px]"
-                >
-                  {Math.round(zoom * 100)}%
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleZoomIn}
-                  title="Zoom in"
-                  className="h-8 w-8 p-0"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <div className="w-px h-6 bg-sky-200 dark:bg-sky-500 mx-1" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleFitToScreen()}
-                  title="Fit to screen"
-                  className="h-8 w-8 p-0"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </div>
 
-              {/* MCP Server Status in bottom left when panel is collapsed */}
-              {isCollapsed && (
-                <div className="absolute bottom-4 left-4 flex items-center" style={{ height: '42px' }}>
-                  <MCPServerStatus
-                    connectionStatus={connectionStatus}
-                    onReconnect={manualReconnect}
-                    isDarkMode={isDarkMode}
-                    isCollapsedView={true}
-                  />
-                </div>
-              )}
             </div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
-      {/* Temporary Logo */}
-      <div className="absolute bottom-4 right-4 pointer-events-none flex items-center" style={{ height: '42px' }}>
-        <div className="text-l font-bold text-right text-gray-400 dark:text-gray-600">
-         @mindpilot/mcp
-        </div>
-      </div>
+
+      {/* Download and Dark Mode */}
+      <TopRightToolBar
+        isDarkMode={isDarkMode}
+        onExport={handleExport}
+        onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+      />
+
+
+      {/* MCP Server Status in bottom left when panel is collapsed */}
+      <FloatingConnectionStatus
+        isVisible={isCollapsed}
+        connectionStatus={connectionStatus}
+        onReconnect={manualReconnect}
+        isDarkMode={isDarkMode}
+      />
+
+      { /* Mindpilot Logo */}
+      <Branding />
+
     </div>
   );
 }
