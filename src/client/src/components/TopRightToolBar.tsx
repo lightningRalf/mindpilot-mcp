@@ -16,7 +16,7 @@ export const TopRightToolBar: React.FC<TopRightToolBarProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`absolute z-10 top-4 right-4 flex items-center gap-3 ${className}`}>
+    <div className={`absolute z-10 top-4 right-4 flex items-center gap-2 ${className}`}>
       <Button
         variant="outline"
         size="icon"

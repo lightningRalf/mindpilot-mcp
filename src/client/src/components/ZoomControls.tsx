@@ -35,7 +35,7 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
         size="sm"
         onClick={onZoomReset}
         title="Reset zoom"
-        className="h-8 w-14 text-sm text-center flex-shrink-0 font-mono"
+        className="h-8 w-14 text-sm text-center flex-shrink-0 font-normal"
       >
         {Math.round(zoom * 100)}%
       </Button>
