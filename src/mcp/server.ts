@@ -64,7 +64,7 @@ export class MindpilotMCPClient {
               diagram: {
                 type: "string",
                 description:
-                  "Mermaid diagram syntax. MUST start with diagram type (graph TD, flowchart LR, sequenceDiagram, etc). Node IDs cannot have spaces. Use quotes for labels with spaces/special chars.",
+                  "Mermaid diagram syntax. MUST start with diagram type (graph TD, flowchart LR, sequenceDiagram, etc). Node IDs cannot have spaces. Use quotes for labels with spaces/special chars. Avoid forward slashes.",
               },
               background: {
                 type: "string",
