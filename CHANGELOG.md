@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.2.3
+- Fix bug when run from npm package
+
 # 0.2.2
 - Fix port assignment bug
 
