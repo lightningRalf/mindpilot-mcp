@@ -4,9 +4,10 @@ See through your agent's eyes. Visualize legacy code, inspect complex subsystems
 ![Screenshot](https://raw.githubusercontent.com/abrinsmead/mindpilot-mcp/main/mindpilot-mcp.png)
 
 ## Why Mindpilot?
-- **Visualize Almost Anything**: Ask your coding agent to generate on-demand architecture, code, and process diagrams to accelerate your understanding of complex concepts.
-- **Export & Share**: Save any diagram as a Mermaid text file or an SVG image.
+- **Visualize Anything**: Generate on-demand architecture, code, and process diagrams to accelerate understanding of complex systems.
+- **Validate AI-Generated Code**: After extended coding sessions, AI-generated code often accumulates unused or redundant components. Mindpilot's visualizations can help identify areas that need cleanup.
 - **Local Processing**: Diagrams are never sent to the cloud. Everything stays between you, your agent, and your agent's LLM provider(s).
+- **Export & Share**: Export any diagram as an SVG image.
 
 ## Quickstarts
 
@@ -83,6 +84,16 @@ You can optionally update your agent's rules file to give specific instructions 
 
 ## How it works
 Anthropic and OpenAI models are well trained to generate valid Mermaid syntax. The MCP is designed to accept Mermaid syntax and render diagrams in a browser app running on http://localhost:4000 (default port).
+
+## Troubleshooting
+
+### asdf issues
+If you use `asdf` as a version manager and have trouble getting any MCPs to work (not just mindpilot), you may need to set a "global" node version from your home directory.
+
+```
+cd
+asdf set nodejs x.x.x
+```
 
 ## Development Configuration
 Configure the MCP in your coding agent (using `claude` in this example)
