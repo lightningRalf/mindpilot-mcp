@@ -5,7 +5,7 @@ See through your agent's eyes. Visualize legacy code, inspect complex subsystems
 
 ## Why Mindpilot?
 - **Visualize Anything**: Generate on-demand architecture, code, and process diagrams to accelerate understanding of complex systems.
-- **Validate AI-Generated Code**: AI-generated code often accumulates unused or redundant constructs. Mindpilot's visualizations can help identify areas that need cleanup.
+- **Vibe Checks**: AI-generated code often accumulates unused or redundant constructs. Code and architecture visualizations can help to quickly spot areas that need cleanup.
 - **Local Processing**: Diagrams are never sent to the cloud. Everything stays between you, your agent, and your agent's LLM provider(s).
 - **Export & Share**: Export any diagram as an SVG image.
 
