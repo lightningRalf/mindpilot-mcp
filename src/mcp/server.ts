@@ -487,7 +487,7 @@ export class MindpilotMCPClient {
 
 // Start the MCP client
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const port = parseInt(process.argv[2] || "4000", 10);
+  const port = parseInt(process.argv[2] || "4000", 10) || 4000;
   const client = new MindpilotMCPClient(port);
 
   // Handle graceful shutdown
