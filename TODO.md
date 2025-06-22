@@ -1,12 +1,12 @@
 ## To Do
 
 ### Must
-- Make logging onlt happen with --debug flag
-- Diagram title (fixed to header for now)
+- ~~only log if --debug~~
 - ~~Support multiple MCP hosts (singleton refactor)~~
 - ~~Auto reconnect stale browser windows~~
 
 ### Should
+- Diagram title (fixed to header for now)
 - Diagram history
 - Favicon
 - Add high viz color instructions to prompt

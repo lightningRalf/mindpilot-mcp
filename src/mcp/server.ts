@@ -7,6 +7,8 @@ import {
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { spawn } from "child_process";
+import { fileURLToPath } from "url";
+import path from "path";
 import { RenderResult, ServerStatus } from "../shared/types.js";
 import { isPortInUse } from "../http/server.js";
 import { mcpLogger as logger } from "../shared/logger.js";
@@ -143,59 +145,58 @@ export class MindpilotMCPClient {
 
   private async ensureConnection(): Promise<void> {
     const state = this.stateMachine.getState();
-    
+
     if (state !== State.CONNECTED) {
-      logger.info('Not connected, waiting for connection...', { currentState: state });
-      
+      logger.info("Not connected, waiting for connection...", {
+        currentState: state,
+      });
+
       // Wait for connection with timeout
       const timeout = 10000; // 10 seconds
       const startTime = Date.now();
-      
+
       while (this.stateMachine.getState() !== State.CONNECTED) {
         if (Date.now() - startTime > timeout) {
-          throw new Error('Timeout waiting for server connection');
+          throw new Error("Timeout waiting for server connection");
         }
-        
+
         if (this.stateMachine.getState() === State.ERROR) {
-          throw new Error('Server connection failed');
+          throw new Error("Server connection failed");
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
   }
 
   private async startSingletonServer(): Promise<void> {
     // Check if debug mode is enabled
-    const isDebugMode = process.argv.includes('--debug');
-    
+    const isDebugMode = process.argv.includes("--debug");
+
+    // Resolve the HTTP server path in a cross-platform way that works with npm installs
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const httpServerPath = path.resolve(__dirname, "../http/server.js");
+
     // Start the singleton server as a separate process
-    const args = [
-      new URL("../http/server.js", import.meta.url).pathname,
-      this.httpPort.toString(),
-    ];
-    
+    const args = [httpServerPath, this.httpPort.toString()];
+
     // Pass debug flag to server if enabled
     if (isDebugMode) {
-      args.push('--debug');
+      args.push("--debug");
     }
-    
-    const serverProcess = spawn(
-      "node",
-      args,
-      {
-        detached: true,
-        stdio: "ignore",
-        env: {
-          ...process.env,
-          MINDPILOT_DEBUG: isDebugMode ? 'true' : 'false'
-        }
+
+    const serverProcess = spawn("node", args, {
+      detached: true,
+      stdio: "ignore",
+      env: {
+        ...process.env,
+        MINDPILOT_DEBUG: isDebugMode ? "true" : "false",
       },
-    );
+    });
 
     serverProcess.unref();
   }
-
 
   private async renderMermaid(
     diagram: string,
@@ -279,7 +280,7 @@ export class MindpilotMCPClient {
 
         spawn(command, args, { detached: true, stdio: "ignore" }).unref();
       } catch (error) {
-        logger.error('Failed to open browser', { error });
+        logger.error("Failed to open browser", { error });
       }
     }
 
@@ -289,7 +290,7 @@ export class MindpilotMCPClient {
   private startKeepalive() {
     // Send initial keepalive
     this.sendKeepalive();
-    
+
     // Send keepalive every 30 seconds
     this.keepaliveInterval = setInterval(() => {
       this.sendKeepalive();
@@ -304,102 +305,111 @@ export class MindpilotMCPClient {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ clientId: this.clientId }),
-        }
+        },
       );
-      
+
       if (!response.ok) {
-        logger.warn('Keepalive failed', { status: response.status });
+        logger.warn("Keepalive failed", { status: response.status });
         await this.stateMachine.transition(Event.KEEPALIVE_FAILED);
       }
     } catch (error) {
-      logger.warn('Keepalive error', { error });
+      logger.warn("Keepalive error", { error });
       await this.stateMachine.transition(Event.KEEPALIVE_FAILED);
     }
   }
 
   private setupStateHandlers() {
     // CHECKING_SERVER state handler
-    this.stateMachine.setStateHandler(State.CHECKING_SERVER, async (context) => {
-      try {
-        const serverRunning = await isPortInUse(context.httpPort);
-        context.serverRunning = serverRunning;
-        
-        if (serverRunning) {
-          logger.info('Server already running');
-          await this.stateMachine.transition(Event.SERVER_CHECK_COMPLETE);
-        } else {
-          logger.info('Server not running');
-          await this.stateMachine.transition(Event.ERROR_OCCURRED);
-        }
-      } catch (error) {
-        context.error = error as Error;
-        await this.stateMachine.transition(Event.ERROR_OCCURRED);
-      }
-    });
-
-    // STARTING_SERVER state handler
-    this.stateMachine.setStateHandler(State.STARTING_SERVER, async (context) => {
-      try {
-        logger.info('Starting singleton HTTP server...');
-        await this.startSingletonServer();
-        await this.stateMachine.transition(Event.SERVER_STARTED);
-      } catch (error) {
-        context.error = error as Error;
-        await this.stateMachine.transition(Event.ERROR_OCCURRED);
-      }
-    });
-
-    // WAITING_FOR_SERVER state handler
-    this.stateMachine.setStateHandler(State.WAITING_FOR_SERVER, async (context) => {
-      // Wait for server to be ready
-      let attempts = 0;
-      const maxAttempts = 20; // 10 seconds total
-      
-      while (attempts < maxAttempts) {
+    this.stateMachine.setStateHandler(
+      State.CHECKING_SERVER,
+      async (context) => {
         try {
           const serverRunning = await isPortInUse(context.httpPort);
+          context.serverRunning = serverRunning;
+
           if (serverRunning) {
-            logger.info('Server is now ready');
-            await this.stateMachine.transition(Event.CONNECTION_ESTABLISHED);
-            return;
+            logger.info("Server already running");
+            await this.stateMachine.transition(Event.SERVER_CHECK_COMPLETE);
+          } else {
+            logger.info("Server not running");
+            await this.stateMachine.transition(Event.ERROR_OCCURRED);
           }
         } catch (error) {
-          // Ignore errors while waiting
+          context.error = error as Error;
+          await this.stateMachine.transition(Event.ERROR_OCCURRED);
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        attempts++;
-      }
-      
-      context.error = new Error('Server failed to start within timeout');
-      await this.stateMachine.transition(Event.ERROR_OCCURRED);
-    });
+      },
+    );
+
+    // STARTING_SERVER state handler
+    this.stateMachine.setStateHandler(
+      State.STARTING_SERVER,
+      async (context) => {
+        try {
+          logger.info("Starting singleton HTTP server...");
+          await this.startSingletonServer();
+          await this.stateMachine.transition(Event.SERVER_STARTED);
+        } catch (error) {
+          context.error = error as Error;
+          await this.stateMachine.transition(Event.ERROR_OCCURRED);
+        }
+      },
+    );
+
+    // WAITING_FOR_SERVER state handler
+    this.stateMachine.setStateHandler(
+      State.WAITING_FOR_SERVER,
+      async (context) => {
+        // Wait for server to be ready
+        let attempts = 0;
+        const maxAttempts = 20; // 10 seconds total
+
+        while (attempts < maxAttempts) {
+          try {
+            const serverRunning = await isPortInUse(context.httpPort);
+            if (serverRunning) {
+              logger.info("Server is now ready");
+              await this.stateMachine.transition(Event.CONNECTION_ESTABLISHED);
+              return;
+            }
+          } catch (error) {
+            // Ignore errors while waiting
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          attempts++;
+        }
+
+        context.error = new Error("Server failed to start within timeout");
+        await this.stateMachine.transition(Event.ERROR_OCCURRED);
+      },
+    );
 
     // CONNECTED state handler
     this.stateMachine.setStateHandler(State.CONNECTED, async (context) => {
-      logger.info('Connected to server, starting keepalive');
+      logger.info("Connected to server, starting keepalive");
       this.startKeepalive();
     });
 
     // RECONNECTING state handler
     this.stateMachine.setStateHandler(State.RECONNECTING, async (context) => {
-      logger.warn('Connection lost, attempting to reconnect...');
-      
+      logger.warn("Connection lost, attempting to reconnect...");
+
       // Stop keepalive during reconnection
       if (this.keepaliveInterval) {
         clearInterval(this.keepaliveInterval);
         this.keepaliveInterval = null;
       }
-      
+
       // Wait a bit before reconnecting
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       try {
         const serverRunning = await isPortInUse(context.httpPort);
         if (serverRunning) {
           await this.stateMachine.transition(Event.CONNECTION_ESTABLISHED);
         } else {
-          context.error = new Error('Server no longer running');
+          context.error = new Error("Server no longer running");
           await this.stateMachine.transition(Event.ERROR_OCCURRED);
         }
       } catch (error) {
@@ -410,22 +420,24 @@ export class MindpilotMCPClient {
 
     // ERROR state handler
     this.stateMachine.setStateHandler(State.ERROR, async (context) => {
-      logger.error('Server connection error', { error: context.error });
-      
+      logger.error("Server connection error", { error: context.error });
+
       if (context.retryCount < context.maxRetries) {
         context.retryCount++;
-        logger.info(`Retrying connection (attempt ${context.retryCount}/${context.maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        logger.info(
+          `Retrying connection (attempt ${context.retryCount}/${context.maxRetries})`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 3000));
         await this.stateMachine.transition(Event.START);
       } else {
-        logger.error('Max retries exceeded, exiting MCP client');
+        logger.error("Max retries exceeded, exiting MCP client");
         process.exit(1);
       }
     });
 
     // SHUTDOWN state handler
     this.stateMachine.setStateHandler(State.SHUTDOWN, async (context) => {
-      logger.info('Shutting down MCP client');
+      logger.info("Shutting down MCP client");
       if (this.keepaliveInterval) {
         clearInterval(this.keepaliveInterval);
         this.keepaliveInterval = null;
@@ -434,20 +446,37 @@ export class MindpilotMCPClient {
 
     // Log state transitions
     this.stateMachine.setOnTransition((from, to, event) => {
-      logger.debug('State transition', { from, to, event });
+      logger.debug("State transition", { from, to, event });
     });
   }
 
   async start() {
-    const isMCPMode = !process.stdin.isTTY;
+    const isTestMode = process.argv.includes("--test");
+    const isMCPMode = !process.stdin.isTTY || isTestMode;
 
     if (isMCPMode) {
-      const isDebugMode = process.argv.includes('--debug');
-      logger.info('Starting Mindpilot MCP client', { debugMode: isDebugMode });
+      const isDebugMode = process.argv.includes("--debug");
+      logger.info("Starting Mindpilot MCP client", {
+        debugMode: isDebugMode,
+        testMode: isTestMode,
+      });
 
       // Start the state machine to ensure server connection
       await this.stateMachine.transition(Event.START);
 
+      // Wait for connection to be established before connecting stdio
+      await this.ensureConnection();
+
+      // In test mode, don't connect stdio transport
+      if (isTestMode) {
+        logger.info(
+          "Test mode: Server started successfully. UI available at http://localhost:4000",
+        );
+        logger.info("Use Ctrl+C to exit");
+        // Keep the process alive in test mode
+        process.stdin.resume();
+        return;
+      }
 
       // Monitor parent process in MCP mode
       if (process.ppid) {
@@ -456,7 +485,7 @@ export class MindpilotMCPClient {
             process.kill(process.ppid, 0);
             setTimeout(checkParent, 1000);
           } catch {
-            logger.info('Parent process ended, shutting down...');
+            logger.info("Parent process ended, shutting down...");
             this.cleanup();
             process.exit(0);
           }
@@ -466,7 +495,7 @@ export class MindpilotMCPClient {
 
       // Handle stdin closure
       process.stdin.on("close", () => {
-        logger.info('stdin closed, shutting down...');
+        logger.info("stdin closed, shutting down...");
         this.cleanup();
         process.exit(0);
       });
@@ -474,8 +503,11 @@ export class MindpilotMCPClient {
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
     } else {
-      logger.warn('This MCP server should be run from an MCP host such as Claude Code or Cursor.');
-      logger.info('To test the UI directly, run: npm run dev');
+      logger.warn(
+        "This MCP server should be run from an MCP host such as Claude Code or Cursor.",
+      );
+      logger.info("To test the UI directly, run: npm run dev");
+      logger.info("To test the MCP server directly, run with --test flag");
       process.exit(1);
     }
   }
@@ -486,7 +518,21 @@ export class MindpilotMCPClient {
 }
 
 // Start the MCP client
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Check if this file is being run directly (works with npm global installs)
+const isMainModule = () => {
+  const currentFile = fileURLToPath(import.meta.url);
+  const mainFile = process.argv[1];
+
+  // Handle npm global installs where argv[1] might be a wrapper
+  if (mainFile && mainFile.includes("mindpilot-mcp")) {
+    return true;
+  }
+
+  // Standard check for direct execution
+  return currentFile === mainFile;
+};
+
+if (isMainModule()) {
   const port = parseInt(process.argv[2] || "4000", 10) || 4000;
   const client = new MindpilotMCPClient(port);
 
@@ -496,14 +542,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(0);
   };
 
-  process.on('SIGINT', () => shutdown());
-  process.on('SIGTERM', () => shutdown());
-  process.on('beforeExit', async () => {
+  process.on("SIGINT", () => shutdown());
+  process.on("SIGTERM", () => shutdown());
+  process.on("beforeExit", async () => {
     await client.cleanup();
   });
 
   client.start().catch((error) => {
-    logger.error('Failed to start MCP client', { error });
+    logger.error("Failed to start MCP client", { error });
     process.exit(1);
   });
 }
