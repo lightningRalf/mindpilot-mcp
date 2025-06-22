@@ -14,6 +14,25 @@ import { isPortInUse } from "../http/server.js";
 import { mcpLogger as logger } from "../shared/logger.js";
 import { StateMachine, State, Event, StateContext } from "./stateMachine.js";
 
+const colorPrompt = `
+  classDef coral fill:#ff6b6b,stroke:#c92a2a,color:#fff
+  classDef ocean fill:#4c6ef5,stroke:#364fc7,color:#fff
+  classDef forest fill:#51cf66,stroke:#2f9e44,color:#fff
+  classDef sunshine fill:#ffd43b,stroke:#fab005,color:#000
+  classDef grape fill:#845ef7,stroke:#5f3dc4,color:#fff
+  classDef amber fill:#ff922b,stroke:#e8590c,color:#fff
+  classDef teal fill:#20c997,stroke:#12b886,color:#fff
+  classDef pink fill:#ff8cc8,stroke:#e64980,color:#fff
+  classDef tangerine fill:#fd7e14,stroke:#e8590c,color:#fff
+  classDef sky fill:#74c0fc,stroke:#339af0,color:#000
+  classDef lavender fill:#d0bfff,stroke:#9775fa,color:#000
+  classDef mint fill:#8ce99a,stroke:#51cf66,color:#000
+  classDef rose fill:#ffa8a8,stroke:#ff6b6b,color:#000
+  classDef lemon fill:#ffe066,stroke:#ffd43b,color:#000
+  classDef violet fill:#a78bfa,stroke:#8b5cf6,color:#fff
+  classDef peach fill:#ffc9c9,stroke:#ffa8a8,color:#000
+`;
+
 export class MindpilotMCPClient {
   private server: Server;
   private clientId: string;
@@ -63,8 +82,7 @@ export class MindpilotMCPClient {
             properties: {
               diagram: {
                 type: "string",
-                description:
-                  "Mermaid diagram syntax. MUST start with diagram type (graph TD, flowchart LR, sequenceDiagram, etc). Node IDs cannot have spaces. Use quotes for labels with spaces/special chars. Avoid forward slashes.",
+                description: `Mermaid diagram syntax. MUST start with diagram type (graph TD, flowchart LR, sequenceDiagram, etc). Node IDs cannot have spaces. Use quotes for labels with spaces/special chars. Avoid forward slashes. Use this colors which work well for both light and dark mode: ${colorPrompt}`,
               },
               background: {
                 type: "string",
