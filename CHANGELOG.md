@@ -1,5 +1,9 @@
 # CHANGELOG
 
+# 0.2.4
+- New color scheme
+- README.md cleanup
+
 # 0.2.3
 - Fix bug when run from npm package
 

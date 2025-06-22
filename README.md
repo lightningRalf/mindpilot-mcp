@@ -1,18 +1,22 @@
 # Mindpilot MCP
-See through your agent's eyes. Visualize legacy code, inspect complex subsystems, understand everything.
+See through your agent's eyes. Visualize legacy code, inspect complex flows, understand everything.
 
 ![Screenshot](https://raw.githubusercontent.com/abrinsmead/mindpilot-mcp/main/mindpilot-mcp.png)
 
 ## Why Mindpilot?
-- **Visualize Anything**: Generate on-demand architecture, code, and process diagrams to accelerate understanding of complex systems.
-- **Vibe Checks**: AI-generated code often accumulates unused or redundant constructs. Code and architecture visualizations can help to quickly spot areas that need cleanup.
+- **Visualize Anything**: Use your coding agent to generate on-demand architecture, code, and process diagrams to view your code from different perspectives.
+- **Vibe Checks**: AI-generated code can accumulate unused and redundant constructs. Use visualizations to spot areas that need cleanup.
 - **Local Processing**: Diagrams are never sent to the cloud. Everything stays between you, your agent, and your agent's LLM provider(s).
-- **Export & Share**: Export any diagram as an SVG image.
+- **Export & Share**: Export any diagram as a vector image.
 
-## Quickstarts
+## Prerequisites
+
+Node.js v20.0.0 or higher.
+
+## Quickstart
 
 ### Claude Code
-`claude mcp add mindpilot-mcp -- npx @mindpilot/mcp@latest`
+`claude mcp add mindpilot -- npx @mindpilot/mcp@latest`
 
 ### Cursor
 Under `Settings` > `Cursor Settings` > `MCP` > Click `Add new global MCP server` and configure mindpilot in the `mcpServers` object.
@@ -22,13 +26,13 @@ Under `Settings` > `Cursor Settings` > `MCP` > Click `Add new global MCP server`
   "mcpServers": {
     "mindpilot": {
       "command": "npx",
-      "args": ["-y", "@mindpilot/mcp@latest"]
+      "args": ["@mindpilot/mcp@latest"]
     }
   }
 }
 ```
 
-### VS Code MCP Preview
+### VS Code
 Follow the instructions here for enabling MCPs in VS Code:  https://code.visualstudio.com/docs/copilot/chat/mcp-servers
 
 Go to `Settings` > `Features` > `MCP`, then click `Edit in settings json`
@@ -58,7 +62,7 @@ Under `Settings` > `Windsurf Settings` > `Manage Plugins`, click `view raw confi
   "mcpServers": {
     "mindpilot": {
       "command": "npx",
-      "args": ["-y", "@mindpilot/mcp@latest"]
+      "args": ["@mindpilot/mcp@latest"]
     }
   }
 }
@@ -83,12 +87,18 @@ You can optionally update your agent's rules file to give specific instructions 
 - "Show me the OAuth flow as a sequence diagram"
 
 ## How it works
-Anthropic and OpenAI models are well trained to generate valid Mermaid syntax. The MCP is designed to accept Mermaid syntax and render diagrams in a browser app running on http://localhost:4000 (default port).
+Frontier LLMs are well trained to generate valid Mermaid syntax. The MCP is designed to accept Mermaid syntax and render diagrams in a web app running on http://localhost:4000 (default port).
 
 ## Troubleshooting
 
-### asdf issues
-If you use `asdf` as a version manager and have trouble getting any MCPs to work (not just mindpilot), you may need to set a "global" node version from your home directory.
+### Port Conflicts
+If you use port 4000 for another service you can configure the MCP to use a different port.
+
+Claude Code example:
+`claude mcp add mindpilot -- npx @mindpilot/mcp@latest --port 5555`
+
+### asdf Issues
+If you use `asdf` as a version manager and have trouble getting MCPs to work (not just mindpilot), you may need to set a "global" nodejs version from your home directory.
 
 ```
 cd
