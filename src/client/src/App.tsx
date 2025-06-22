@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/resizable";
 import {
   ChevronLeft,
-  ChevronRight,
+  Pencil,
 } from "lucide-react";
 import mermaid from "mermaid";
 import { MCPServerStatus } from "@/components/MCPServerStatus";
@@ -35,7 +35,7 @@ function App() {
   });
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem("mindpilot-mcp-panel-collapsed");
-    return saved === "true";
+    return saved !== null ? saved === "true" : true; // Default to collapsed on first use
   });
   const [panelSize, setPanelSize] = useState(() => {
     const saved = localStorage.getItem("mindpilot-mcp-panel-size");
@@ -417,17 +417,19 @@ function App() {
     >
       <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
         {isCollapsed && (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => {
-              panelRef.current?.expand();
-            }}
-            className="absolute z-10 top-4 left-4"
-            title="Show editor"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                panelRef.current?.expand();
+              }}
+              className="h-8 w-8"
+              title="Show editor"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
         )}
         <ResizablePanel
           ref={panelRef}
@@ -473,22 +475,27 @@ function App() {
           >
             {!isCollapsed && (
               <>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    panelRef.current?.collapse();
-                  }}
-                  className="absolute z-10 top-4 left-4"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <textarea
-                  className={`flex-1 p-4 pl-[70px] font-mono text-sm resize-none focus:outline-none ${isDarkMode ? "bg-gray-800 text-gray-100" : "bg-neutral-200"}`}
-                  value={diagram}
-                  onChange={(e) => setDiagram(e.target.value)}
+                <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-500 p-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      panelRef.current?.collapse();
+                    }}
+                    className="h-8 w-8"
+                    title="Hide editor"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className={`flex-1 p-4 pl-20 ${isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}>
+                  <textarea
+                    className={`w-full h-full px-4 py-4 font-mono text-xs resize-none transition-colors focus:outline-none focus:ring-2 rounded-xl ${isDarkMode ? "bg-gray-700 focus:bg-gray-600 focus:ring-sky-700/50 text-gray-100" : "bg-neutral-100 focus:bg-neutral-100 focus:ring-indigo-50 text-gray-900"}`}
+                    value={diagram}
+                    onChange={(e) => setDiagram(e.target.value)}
                   placeholder=""
-                />
+                  />
+                </div>
                 <div
                   className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}
                 >

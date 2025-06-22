@@ -20,7 +20,7 @@ export const FloatingConnectionStatus: React.FC<FloatingConnectionStatusProps> =
 
   return (
     <div
-      className={`absolute bottom-4 left-4 flex items-center ${className}`}
+      className={`absolute bottom-4 left-6 flex items-center ${className}`}
       style={{ height: '42px' }}
     >
       <MCPServerStatus

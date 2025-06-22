@@ -9,7 +9,6 @@ interface MCPServerStatusProps {
 export function MCPServerStatus({
   connectionStatus,
   onReconnect,
-  isDarkMode = false,
   isCollapsedView = false,
 }: MCPServerStatusProps) {
   const isDisconnected = connectionStatus === "Disconnected" ||
@@ -53,12 +52,10 @@ export function MCPServerStatus({
     return (
       <button
         onClick={onReconnect}
-        className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 border border-gray-400 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-500 transition-colors ${
-          isDarkMode ? "bg-gray-800/90" : "bg-neutral-300"
-        }`}
+        className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
         <div className="w-2 h-2 rounded-full bg-red-500" />
-        <span className="text-xs">Reconnect</span>
+        <span className="text-xs font-normal text-neutral-500 dark:text-gray-400">Reconnect</span>
       </button>
     );
   }
@@ -66,9 +63,7 @@ export function MCPServerStatus({
   // Connected/Reconnecting states in collapsed view
   return (
     <div
-      className={`flex items-center gap-2 backdrop-blur-sm rounded-lg px-3 h-10 ${
-        isDarkMode ? "bg-gray-800/90" : "bg-white/90"
-      }`}
+      className="flex items-center gap-2"
     >
       <div
         className={`w-2 h-2 rounded-full ${
@@ -77,7 +72,7 @@ export function MCPServerStatus({
             : "bg-yellow-500 animate-pulse"
         }`}
       />
-      <span className="text-xs">{displayStatus}</span>
+      <span className="text-xs font-normal text-neutral-500 dark:text-gray-400">{displayStatus}</span>
     </div>
   );
 }

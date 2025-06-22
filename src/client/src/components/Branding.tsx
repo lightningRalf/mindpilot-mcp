@@ -8,10 +8,10 @@ interface BrandingProps {
 export const Branding: React.FC<BrandingProps> = ({ className = '' }) => {
   return (
     <div
-      className={`absolute bottom-4 right-4 pointer-events-none flex items-center ${className}`}
+      className={`absolute bottom-4 right-6 pointer-events-none flex items-center ${className}`}
       style={{ height: '42px' }}
     >
-      <div className="text-1 text-xs font-normal text-right text-neutral-400 dark:text-gray-600">
+      <div className="text-1 text-xs font-normal text-right text-neutral-500 dark:text-gray-400">
         {BRANDING.displayName}
       </div>
     </div>
