@@ -254,18 +254,6 @@ export class MindpilotMCPClient {
 
       const result = (await response.json()) as RenderResult;
 
-      // Auto-open UI if no browser tabs connected
-      const statusResponse = await fetch(
-        `http://localhost:${this.httpPort}/api/status`,
-      );
-      if (statusResponse.ok) {
-        const status = (await statusResponse.json()) as any;
-        if (status.browserConnections === 0) {
-          // No browser tabs open
-          await this.openUI(true);
-        }
-      }
-
       return result;
     } catch (error) {
       return {

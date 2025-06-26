@@ -108,7 +108,7 @@ asdf set nodejs x.x.x
 ## Development Configuration
 Configure the MCP in your coding agent (using `claude` in this example)
 
-`claude mcp add mindpilot-mcp -- npx tsx <path to...>/src/server/server.ts`
+`claude mcp add mindpilot -- npx tsx <path to...>/src/server/server.ts`
 
 Run `claude` with the `--debug` flag if you need to see MCP errors
 

@@ -39,15 +39,16 @@ export interface ServerStatus {
 }
 
 export interface ClientMessage {
-  type: "render" | "validate" | "register" | "unregister" | "ping";
+  type: "render" | "validate" | "register" | "unregister" | "ping" | "visibility_response";
   clientId?: string;
   clientName?: string;
   diagram?: string;
   background?: string;
+  isVisible?: boolean;
 }
 
 export interface ServerMessage {
-  type: "render_result" | "validation_result" | "registered" | "error" | "pong";
+  type: "render_result" | "validation_result" | "registered" | "error" | "pong" | "visibility_query";
   clientId?: string;
   result?: RenderResult | ValidationResult;
   error?: string;

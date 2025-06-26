@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.2.7
+- Auto-open new browser tab if existing tabs are hidden
+
 # 0.2.6
 - Replace Winston with custom logger that uses MCP's sendLoggingMessage API
 - Suppress npm warnings that were corrupting JSON-RPC communication

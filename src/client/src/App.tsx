@@ -76,7 +76,7 @@ function App() {
     return url;
   }, []); // Empty deps - URL shouldn't change during the session
 
-  const { state, reconnect } = useWebSocketStateMachine({
+  const { state, reconnect, send } = useWebSocketStateMachine({
     url: wsUrl,
     onMessage: (data) => {
       console.log('[WebSocket Message]', data);
@@ -91,6 +91,14 @@ function App() {
         setTimeout(() => {
           handleFitToScreen(true);
         }, 100);
+      } else if (data.type === "visibility_query") {
+        // Server is asking if we're visible
+        const isVisible = !document.hidden;
+        console.log('[Visibility Query] Responding with:', { isVisible, hidden: document.hidden });
+        send({
+          type: "visibility_response",
+          isVisible
+        });
       }
     },
   });
@@ -116,6 +124,7 @@ function App() {
       }
     };
   }, []);
+
 
   // Render diagram
   useEffect(() => {
