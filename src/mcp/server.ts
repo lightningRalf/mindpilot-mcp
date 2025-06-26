@@ -1,5 +1,13 @@
 #!/usr/bin/env node
 
+// Suppress npm warnings that can contaminate stdout when running as MCP server
+// This must be done before any imports that might trigger npm
+if (!process.stdout.isTTY) {
+  process.env.npm_config_loglevel = "silent";
+  process.env.npm_config_quiet = "true";
+  process.env.NODE_NO_WARNINGS = "1";
+}
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -57,6 +65,8 @@ export class MindpilotMCPClient {
         },
       },
     );
+
+    logger.setMcpServer(this.server);
 
     // Initialize state machine
     const context: StateContext = {

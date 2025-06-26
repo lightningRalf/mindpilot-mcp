@@ -1,130 +1,93 @@
-import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
-import path from 'path';
-import os from 'os';
-import fs from 'fs';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 
-// Check if debug mode is enabled via environment variable or flag
-const isDebugMode = process.env.MINDPILOT_DEBUG === 'true' || process.argv.includes('--debug');
+type LogLevel =
+  | "debug"
+  | "info"
+  | "notice"
+  | "warning"
+  | "error"
+  | "critical"
+  | "alert"
+  | "emergency";
 
-const LOG_DIR = path.join(os.homedir(), '.mindpilot', 'logs');
+const isDebugMode =
+  process.env.MINDPILOT_DEBUG === "true" || process.argv.includes("--debug");
 
-// Create log directory only if debug mode is enabled
-if (isDebugMode) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+/**
+ * MCP-compliant logger that works for all subsystems.
+ * - When MCP server is available: sends logs through MCP protocol
+ * - Otherwise: writes to stderr (never stdout to avoid protocol contamination)
+ */
+class MCPLogger {
+  private mcpServer?: Server;
+  private name: string;
+  private debugMode: boolean;
+
+  constructor(name: string) {
+    this.name = name;
+    this.debugMode = isDebugMode;
+  }
+
+  setMcpServer(server: Server) {
+    this.mcpServer = server;
+  }
+
+  private log(level: LogLevel, message: string, metadata?: any) {
+    const timestamp = new Date().toISOString();
+
+    if (this.mcpServer) {
+      // Send through MCP protocol
+      this.mcpServer
+        .sendLoggingMessage({
+          level,
+          logger: this.name,
+          data: metadata ? { message, ...metadata } : message,
+        })
+        .catch((err) => {
+          // Fallback to stderr if MCP logging fails
+          console.error(
+            `[${timestamp}] [${this.name}] [${level}] ${message}`,
+            metadata || "",
+          );
+        });
+    } else {
+      // Write to stderr (never stdout!)
+      const logMessage = metadata
+        ? `[${timestamp}] [${this.name}] [${level}] ${message} ${JSON.stringify(metadata)}`
+        : `[${timestamp}] [${this.name}] [${level}] ${message}`;
+      console.error(logMessage);
+    }
+  }
+
+  debug(message: string, metadata?: any) {
+    if (this.debugMode) {
+      this.log("debug", message, metadata);
+    }
+  }
+
+  info(message: string, metadata?: any) {
+    this.log("info", message, metadata);
+  }
+
+  warn(message: string, metadata?: any) {
+    this.log("warning", message, metadata);
+  }
+
+  error(message: string, metadata?: any) {
+    this.log("error", message, metadata);
+  }
+
+  critical(message: string, metadata?: any) {
+    this.log("critical", message, metadata);
+  }
 }
 
-// Create base transports array
-const httpTransports: winston.transport[] = [
-  // Console transport always enabled
-  new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple(),
-      winston.format.printf(({ level, message, timestamp, ...metadata }) => {
-        let msg = `${timestamp} [${level}] ${message}`;
-        if (Object.keys(metadata).length > 1) {
-          msg += ` ${JSON.stringify(metadata)}`;
-        }
-        return msg;
-      })
-    )
-  })
-];
-
-// Add file transport only in debug mode
-if (isDebugMode) {
-  httpTransports.push(
-    new DailyRotateFile({
-      filename: path.join(LOG_DIR, 'http-server-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-      )
-    })
-  );
-}
-
-// Create a logger instance for HTTP server
-export const httpLogger = winston.createLogger({
-  level: isDebugMode ? 'debug' : (process.env.LOG_LEVEL || 'info'),
-  format: winston.format.combine(
-    winston.format.timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss.SSS'
-    }),
-    winston.format.errors({ stack: true }),
-    winston.format.splat(),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'http-server' },
-  transports: httpTransports
-});
-
-// Create base transports array for MCP
-const mcpTransports: winston.transport[] = [
-  // Console transport always enabled
-  new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple(),
-      winston.format.printf(({ level, message, timestamp, ...metadata }) => {
-        let msg = `${timestamp} [${level}] ${message}`;
-        if (Object.keys(metadata).length > 1) {
-          msg += ` ${JSON.stringify(metadata)}`;
-        }
-        return msg;
-      })
-    )
-  })
-];
-
-// Add file transport only in debug mode
-if (isDebugMode) {
-  mcpTransports.push(
-    new DailyRotateFile({
-      filename: path.join(LOG_DIR, 'mcp-client-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-      )
-    })
-  );
-}
-
-// Create a logger instance for MCP client
-export const mcpLogger = winston.createLogger({
-  level: isDebugMode ? 'debug' : (process.env.LOG_LEVEL || 'info'),
-  format: winston.format.combine(
-    winston.format.timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss.SSS'
-    }),
-    winston.format.errors({ stack: true }),
-    winston.format.splat(),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'mcp-client' },
-  transports: mcpTransports
-});
-
-// Handle errors in winston
-httpLogger.on('error', (error) => {
-  console.error('Winston logger error:', error);
-});
-
-mcpLogger.on('error', (error) => {
-  console.error('Winston logger error:', error);
-});
+// Create logger instances for different subsystems
+export const httpLogger = new MCPLogger("http-server");
+export const mcpLogger = new MCPLogger("mcp-client");
 
 // Log debug mode status
 if (isDebugMode) {
-  httpLogger.info('Debug mode enabled - file logging active', { logDir: LOG_DIR });
-  mcpLogger.info('Debug mode enabled - file logging active', { logDir: LOG_DIR });
+  httpLogger.info("Debug mode enabled");
+  mcpLogger.info("Debug mode enabled");
 }

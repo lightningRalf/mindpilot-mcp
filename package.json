@@ -1,6 +1,6 @@
 {
   "name": "@mindpilot/mcp",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },
@@ -38,9 +38,7 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "fastify": "^4.26.0",
     "mermaid": "11.6.0",
-    "open": "^9.1.0",
-    "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "open": "^9.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
