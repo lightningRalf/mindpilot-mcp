@@ -48,6 +48,7 @@ export class MindpilotMCPClient {
   private httpPort: number;
   private keepaliveInterval: NodeJS.Timeout | null = null;
   private stateMachine: StateMachine;
+  private abortControllers: Map<string, AbortController> = new Map();
 
   constructor(port: number = 4000) {
     this.httpPort = port;
@@ -77,6 +78,26 @@ export class MindpilotMCPClient {
     this.stateMachine = new StateMachine(context);
     this.setupStateHandlers();
     this.setupHandlers();
+  }
+
+  private getAbortController(key: string): AbortController {
+    // Cancel any existing controller for this key
+    const existing = this.abortControllers.get(key);
+    if (existing) {
+      existing.abort();
+    }
+    
+    // Create new controller
+    const controller = new AbortController();
+    this.abortControllers.set(key, controller);
+    return controller;
+  }
+
+  private cancelAllRequests() {
+    for (const [key, controller] of this.abortControllers.entries()) {
+      controller.abort();
+    }
+    this.abortControllers.clear();
   }
 
   private setupHandlers() {
@@ -231,6 +252,8 @@ export class MindpilotMCPClient {
     background?: string,
   ): Promise<RenderResult> {
     // Use HTTP API endpoint
+    const controller = this.getAbortController('render');
+    
     try {
       const response = await fetch(
         `http://localhost:${this.httpPort}/api/render`,
@@ -245,6 +268,7 @@ export class MindpilotMCPClient {
             clientId: this.clientId,
             clientName: this.clientName,
           }),
+          signal: controller.signal,
         },
       );
 
@@ -314,6 +338,8 @@ export class MindpilotMCPClient {
   }
 
   private async sendKeepalive() {
+    const controller = this.getAbortController('keepalive');
+    
     try {
       const response = await fetch(
         `http://localhost:${this.httpPort}/api/keepalive`,
@@ -321,6 +347,7 @@ export class MindpilotMCPClient {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ clientId: this.clientId }),
+          signal: controller.signal,
         },
       );
 
@@ -339,8 +366,10 @@ export class MindpilotMCPClient {
     this.stateMachine.setStateHandler(
       State.CHECKING_SERVER,
       async (context) => {
+        const controller = this.getAbortController('server-check');
+        
         try {
-          const serverRunning = await isPortInUse(context.httpPort);
+          const serverRunning = await isPortInUse(context.httpPort, controller.signal);
           context.serverRunning = serverRunning;
 
           if (serverRunning) {
@@ -381,8 +410,10 @@ export class MindpilotMCPClient {
         const maxAttempts = 20; // 10 seconds total
 
         while (attempts < maxAttempts) {
+          const controller = this.getAbortController('wait-server');
+          
           try {
-            const serverRunning = await isPortInUse(context.httpPort);
+            const serverRunning = await isPortInUse(context.httpPort, controller.signal);
             if (serverRunning) {
               logger.info("Server is now ready");
               await this.stateMachine.transition(Event.CONNECTION_ESTABLISHED);
@@ -417,11 +448,16 @@ export class MindpilotMCPClient {
         this.keepaliveInterval = null;
       }
 
+      // Cancel any pending requests
+      this.cancelAllRequests();
+
       // Wait a bit before reconnecting
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      const controller = this.getAbortController('reconnect');
+      
       try {
-        const serverRunning = await isPortInUse(context.httpPort);
+        const serverRunning = await isPortInUse(context.httpPort, controller.signal);
         if (serverRunning) {
           await this.stateMachine.transition(Event.CONNECTION_ESTABLISHED);
         } else {
@@ -458,6 +494,9 @@ export class MindpilotMCPClient {
         clearInterval(this.keepaliveInterval);
         this.keepaliveInterval = null;
       }
+      
+      // Cancel all pending requests
+      this.cancelAllRequests();
     });
 
     // Log state transitions

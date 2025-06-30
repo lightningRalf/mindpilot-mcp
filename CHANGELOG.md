@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.2.8
+- Fix MaxListeners warning bug
+
 # 0.2.7
 - Auto-open new browser tab if existing tabs are hidden
 

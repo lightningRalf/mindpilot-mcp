@@ -438,9 +438,9 @@ export class SingletonHTTPServer {
 }
 
 // Helper function to check if a server is already running on a port
-export async function isPortInUse(port: number): Promise<boolean> {
+export async function isPortInUse(port: number, signal?: AbortSignal): Promise<boolean> {
   try {
-    const response = await fetch(`http://localhost:${port}/api/status`);
+    const response = await fetch(`http://localhost:${port}/api/status`, { signal });
     return response.ok;
   } catch {
     return false;
