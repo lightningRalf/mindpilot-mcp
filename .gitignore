@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+dxt/*.dxt
 
 # OS files
 .DS_Store

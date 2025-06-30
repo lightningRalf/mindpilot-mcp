@@ -1,0 +1,46 @@
+{
+  "dxt_version": "0.1",
+  "name": "mindpilot",
+  "version": "0.2.7",
+  "description": "See through your agent's eyes. Visualize legacy code, architect new systems, understand everything. Enables Claude to create and visualize Mermaid diagrams with real-time rendering.",
+  "author": {
+    "name": "Alex Brinsmead"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/mindpilot/mindpilot-mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mindpilot/mindpilot-mcp.git"
+  },
+  "keywords": ["mermaid", "diagram", "visualization", "architecture", "flowchart", "sequence-diagram"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/mcp/server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/mcp/server.js"]
+    }
+  },
+  "runtime": {
+    "node": {
+      "version": ">=20.0.0"
+    }
+  },
+  "user_config": {
+    "port": {
+      "type": "number",
+      "title": "HTTP Server Port",
+      "description": "Port number for the HTTP server (default: 4000)",
+      "default": 4000,
+      "required": false
+    },
+    "autoOpenBrowser": {
+      "type": "boolean",
+      "title": "Auto Open Browser",
+      "description": "Automatically open browser when starting UI",
+      "default": true,
+      "required": false
+    }
+  },
+  "supported_platforms": ["darwin", "win32", "linux"]
+}

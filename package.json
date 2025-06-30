@@ -17,6 +17,8 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd src/client && npm run build",
     "build:server": "tsc",
+    "build:dxt": "npm run clean:dxt && npm run build && cp dxt/manifest.json . && cp dxt/.dxtignore . && npx dxt pack && rm -f manifest.json .dxtignore && mv mindpilot-*.dxt dxt/",
+    "clean:dxt": "rm -f dxt/*.dxt && rm -rf dxt/mindpilot.dxt/",
     "dev": "NODE_ENV=development concurrently \"tsx src/http/server.ts\" \"cd src/client && npm run dev\"",
     "start": "NODE_ENV=production node dist/http/server.js",
     "start:mcp": "NODE_ENV=production node dist/mcp/server.js",
@@ -41,6 +43,7 @@
     "open": "^9.1.0"
   },
   "devDependencies": {
+    "@anthropic-ai/dxt": "^0.1.0",
     "@types/node": "^20.0.0",
     "@types/ws": "^8.18.1",
     "concurrently": "^9.1.2",
