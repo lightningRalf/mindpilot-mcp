@@ -1,8 +1,9 @@
 ## To Do
 
 ### Must
+- Sanitize curly braces in Flowchart labels
 - Parsing bug in ERDs
-- Open new window if browser is hidden (intermittently working)
+- ~~Try to open new window if browser considers itself hidden~~
 - ~~Claude Desktop bug~~
 - ~~Check open tabs for visibility and open new tab if all are hidden~~
 - ~~Set engine to 20.0.0~~
