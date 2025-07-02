@@ -16,6 +16,7 @@ import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus"
 import { ZoomControls } from "@/components/ZoomControls";
 import { TopRightToolBar } from "@/components/TopRightToolBar";
 import { useWebSocketStateMachine } from "@/hooks/useWebSocketStateMachine";
+import { MermaidEditor } from "@/components/MermaidEditor";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -498,11 +499,10 @@ function App() {
                   </Button>
                 </div>
                 <div className={`flex-1 p-4 pl-20 ${isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}>
-                  <textarea
-                    className={`w-full h-full px-4 py-4 font-mono text-xs resize-none transition-colors focus:outline-none focus:ring-2 rounded-xl ${isDarkMode ? "bg-gray-700 focus:bg-gray-600 focus:ring-sky-700/50 text-gray-100" : "bg-neutral-100 focus:bg-neutral-100 focus:ring-indigo-50 text-gray-900"}`}
+                  <MermaidEditor
                     value={diagram}
-                    onChange={(e) => setDiagram(e.target.value)}
-                  placeholder=""
+                    onChange={setDiagram}
+                    isDarkMode={isDarkMode}
                   />
                 </div>
                 <div

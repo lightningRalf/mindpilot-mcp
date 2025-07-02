@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.2.10
+- Line number and mermaid syntax highlighting in the editor
+
 # 0.2.9
 - Actually fix the MaxListeners warning bug
 
