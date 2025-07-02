@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# 0.2.9
+- Actually fix the MaxListeners warning bug
+
 # 0.2.8
 - Fix MaxListeners warning bug
 
