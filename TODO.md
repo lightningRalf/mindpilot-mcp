@@ -1,10 +1,16 @@
-## To Do
+## Roadmap
 
-### Must
-- Diagram history
+### 0.3.0
+
+#### Must
+- Fix port bug
+- Diagram titles
+- Local diagram history
 - Keyboard shortcuts
-- Sanitize curly braces in Flowchart labels
-- Parsing bug in ERDs
+- Improve mermaid sytax error detection
+  - Sanitize curly braces in Flowchart labels
+  - Sanitize forward slashes in urls (api urls typically)
+  - Sanitize parsing bugs in ERDs
 - ~~Fix MaxListenersExceededWarning~~
 - ~~Try to open new window if browser considers itself hidden~~
 - ~~Claude Desktop bug~~
@@ -14,11 +20,11 @@
 - ~~Support multiple MCP hosts (singleton refactor)~~
 - ~~Auto reconnect stale browser windows~~
 
-### Should
-- Download both text and svg
+#### Should
 - Refactor App.tsx
 - Accessibility
 - Tests
+- Animate panel toggling
 - ~~Favicon~~
 - ~~Clean up light and dark themes~~
 - ~~Add high viz color instructions to prompt~~
@@ -27,11 +33,8 @@
   - ~~Componentize~~
   - ~~WebSocket state machine~~
 
-### Could
-- Animate panel toggling
+#### Could
+- Tests
+
+#### Wont
 - Color themes
-- Metadata
-  - Project name
-  - Diagram name
-    - Use as title on downloaded diagrams
-  - Addtional diagram context

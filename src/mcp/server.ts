@@ -91,11 +91,8 @@ export class MindpilotMCPClient {
   }
 
   private getWaitServerSignal(): AbortSignal | undefined {
-    // Separate controller for wait server loop to avoid interference
-    if (
-      !this.waitServerController ||
-      this.waitServerController.signal.aborted
-    ) {
+    // Reuse the same controller for the wait server loop to avoid listener accumulation
+    if (!this.waitServerController || this.waitServerController.signal.aborted) {
       this.waitServerController = new AbortController();
     }
     return this.waitServerController.signal;
@@ -240,7 +237,7 @@ export class MindpilotMCPClient {
     const httpServerPath = path.resolve(__dirname, "../http/server.js");
 
     // Start the singleton server as a separate process
-    const args = [httpServerPath, this.httpPort.toString()];
+    const args = [httpServerPath, '--port', this.httpPort.toString()];
 
     // Pass debug flag to server if enabled
     if (isDebugMode) {
@@ -516,12 +513,12 @@ export class MindpilotMCPClient {
     });
   }
 
-  async start() {
-    const isTestMode = process.argv.includes("--test");
+  async start(options: { test?: boolean; debug?: boolean } = {}) {
+    const isTestMode = options.test || false;
     const isMCPMode = !process.stdin.isTTY || isTestMode;
 
     if (isMCPMode) {
-      const isDebugMode = process.argv.includes("--debug");
+      const isDebugMode = options.debug || false;
       logger.info("Starting Mindpilot MCP client", {
         debugMode: isDebugMode,
         testMode: isTestMode,
@@ -536,7 +533,7 @@ export class MindpilotMCPClient {
       // In test mode, don't connect stdio transport
       if (isTestMode) {
         logger.info(
-          "Test mode: Server started successfully. UI available at http://localhost:4000",
+          `Test mode: Server started successfully. UI available at http://localhost:${this.httpPort}`,
         );
         logger.info("Use Ctrl+C to exit");
         // Keep the process alive in test mode
@@ -602,7 +599,27 @@ if (isMainModule()) {
   // Increase the MaxListeners limit to prevent warnings
   setMaxListeners(20, process);
 
-  const port = parseInt(process.argv[2] || "4000", 10) || 4000;
+  const { parseArgs } = await import('node:util');
+  
+  const { values } = parseArgs({
+    options: {
+      port: {
+        type: 'string',
+        short: 'p',
+        default: '4000'
+      },
+      test: {
+        type: 'boolean',
+        default: false
+      },
+      debug: {
+        type: 'boolean',
+        default: false
+      }
+    }
+  });
+  
+  const port = parseInt(values.port!, 10);
   const client = new MindpilotMCPClient(port);
 
   // Handle graceful shutdown
@@ -617,7 +634,7 @@ if (isMainModule()) {
     await client.cleanup();
   });
 
-  client.start().catch((error) => {
+  client.start({ test: values.test, debug: values.debug }).catch((error) => {
     logger.error("Failed to start MCP client", { error });
     process.exit(1);
   });

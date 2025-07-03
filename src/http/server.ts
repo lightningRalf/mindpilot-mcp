@@ -449,7 +449,19 @@ export async function isPortInUse(port: number, signal?: AbortSignal): Promise<b
 
 // Start singleton server if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const port = parseInt(process.argv[2] || "4000", 10);
+  const { parseArgs } = await import('node:util');
+  
+  const { values } = parseArgs({
+    options: {
+      port: {
+        type: 'string',
+        short: 'p',
+        default: '4000'
+      }
+    }
+  });
+  
+  const port = parseInt(values.port!, 10);
   const server = new SingletonHTTPServer(port);
 
   server.start().catch((error) => {
