@@ -11,6 +11,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import open from "open";
+import { setMaxListeners } from "events";
 import { httpLogger as logger } from "../shared/logger.js";
 import {
   RenderResult,
@@ -289,6 +290,7 @@ export class SingletonHTTPServer {
           const browserId = `browser-${index}`;
           const timeout = setTimeout(() => {
             logger.debug(`Browser ${browserId} timed out (assumed hidden)`);
+            socket.socket.off("message", messageHandler); // Remove handler on timeout
             resolve(false); // Assume hidden if no response in 500ms
           }, 500);
 
@@ -450,6 +452,9 @@ export async function isPortInUse(port: number, signal?: AbortSignal): Promise<b
 // Start singleton server if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { parseArgs } = await import('node:util');
+  
+  // Increase max listeners to prevent warnings
+  setMaxListeners(20, process);
   
   const { values } = parseArgs({
     options: {
