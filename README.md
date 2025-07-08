@@ -1,4 +1,8 @@
 # Mindpilot MCP
+![GitHub Repo stars](https://img.shields.io/github/stars/abrinsmead/mindpilot-mcp)
+![NPM Version](https://img.shields.io/npm/v/@mindpilot/mcp)
+![GitHub License](https://img.shields.io/github/license/abrinsmead/mindpilot-mcp)
+
 See through your agent's eyes. Visualize legacy code, inspect complex flows, understand everything.
 
 ![Screenshot](https://raw.githubusercontent.com/abrinsmead/mindpilot-mcp/main/mindpilot-mcp.png)
