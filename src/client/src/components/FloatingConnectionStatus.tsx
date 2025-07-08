@@ -1,5 +1,6 @@
 import React from 'react';
 import { MCPServerStatus } from '@/components/MCPServerStatus';
+import { Branding } from '@/components/Branding';
 
 interface FloatingConnectionStatusProps {
   isVisible: boolean;
@@ -20,9 +21,9 @@ export const FloatingConnectionStatus: React.FC<FloatingConnectionStatusProps> =
 
   return (
     <div
-      className={`absolute bottom-4 left-6 flex items-center ${className}`}
-      style={{ height: '42px' }}
+      className={`absolute bottom-4 left-6 ${className}`}
     >
+      <Branding className="mb-2" />
       <MCPServerStatus
         connectionStatus={connectionStatus}
         onReconnect={onReconnect}

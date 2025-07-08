@@ -37,7 +37,7 @@ export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProp
       inherit: true,
       rules: [],
       colors: {
-        'editor.background': '#e5e5e5', // neutral-200
+        'editor.background': '#ffffff', // white
         'editor.foreground': '#171717', // neutral-900
         'editor.lineHighlightBackground': '#00000015', // black with low opacity
         'editor.lineHighlightBorder': '#00000025', // black border with opacity
@@ -154,7 +154,7 @@ export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProp
   }, [isDarkMode]);
 
   return (
-    <div className="w-full h-full rounded-xl overflow-hidden">
+    <div className="w-full h-full overflow-hidden" style={{ boxShadow: 'none' }}>
       <Editor
         height="100%"
         defaultLanguage="mermaid"
@@ -187,6 +187,7 @@ export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProp
             verticalScrollbarSize: 10,
             horizontalScrollbarSize: 10,
           },
+          overviewRulerBorder: false,
         }}
       />
     </div>

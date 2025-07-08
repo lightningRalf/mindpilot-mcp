@@ -25,6 +25,7 @@ export interface DiagramBroadcast {
   clientId?: string;
   clientName?: string;
   diagram: string;
+  title?: string;
   svg?: string;
   error?: string;
   details?: string;
@@ -52,4 +53,14 @@ export interface ServerMessage {
   clientId?: string;
   result?: RenderResult | ValidationResult;
   error?: string;
+}
+
+// History types
+export interface DiagramHistoryEntry {
+  id: string;
+  timestamp: Date;
+  lastEdited: Date;
+  diagram: string;
+  title: string;  // Required title
+  collection: string | null;  // repo name, user collection, or null
 }

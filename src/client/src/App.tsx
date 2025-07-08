@@ -6,17 +6,17 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import {
-  ChevronLeft,
   Pencil,
+  PanelLeft,
+  PanelLeftClose,
+  PanelRightClose,
 } from "lucide-react";
 import mermaid from "mermaid";
-import { MCPServerStatus } from "@/components/MCPServerStatus";
-import { Branding } from "@/components/Branding";
 import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus";
 import { ZoomControls } from "@/components/ZoomControls";
-import { TopRightToolBar } from "@/components/TopRightToolBar";
 import { useWebSocketStateMachine } from "@/hooks/useWebSocketStateMachine";
 import { MermaidEditor } from "@/components/MermaidEditor";
+import { HistoryPanel } from "@/components/HistoryPanel";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -30,17 +30,26 @@ mermaid.initialize({
 
 function App() {
   const [diagram, setDiagram] = useState("");
+  const [title, setTitle] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem("mindpilot-mcp-dark-mode");
     return saved === "true";
   });
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-panel-collapsed");
+  const [isEditCollapsed, setIsEditCollapsed] = useState(() => {
+    const saved = localStorage.getItem("mindpilot-mcp-edit-collapsed");
     return saved !== null ? saved === "true" : true; // Default to collapsed on first use
   });
-  const [panelSize, setPanelSize] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-panel-size");
-    return saved ? parseFloat(saved) : 50;
+  const [editPanelSize, setEditPanelSize] = useState(() => {
+    const saved = localStorage.getItem("mindpilot-mcp-edit-panel-size");
+    return saved ? parseFloat(saved) : 30;
+  });
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(() => {
+    const saved = localStorage.getItem("mindpilot-mcp-history-collapsed");
+    return saved !== null ? saved === "true" : false; // Default to expanded
+  });
+  const [historyPanelSize, setHistoryPanelSize] = useState(() => {
+    const saved = localStorage.getItem("mindpilot-mcp-history-panel-size");
+    return saved ? parseFloat(saved) : 20;
   });
   const [status, setStatus] = useState("Ready");
   const [zoom, setZoom] = useState(1);
@@ -51,7 +60,8 @@ function App() {
   const [isZooming, setIsZooming] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<any>(null);
+  const editPanelRef = useRef<any>(null);
+  const historyPanelRef = useRef<any>(null);
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // WebSocket connection setup - memoize to prevent re-calculation
@@ -84,6 +94,9 @@ function App() {
       if (data.type === "render_result" && data.diagram) {
         console.log("Updating diagram from WebSocket broadcast");
         setDiagram(data.diagram);
+        if (data.title) {
+          setTitle(data.title);
+        }
         setStatus("Rendered successfully (via broadcast)");
 
         // Reset view to fit new diagram
@@ -175,25 +188,18 @@ function App() {
     return () => clearTimeout(timeoutId);
   }, [diagram, isDarkMode]);
 
-  const handleExport = () => {
-    const svg = previewRef.current?.querySelector("svg");
-    if (!svg) {
-      setStatus("No diagram to export");
-      return;
-    }
-
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([svgData], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "mermaid-diagram.svg";
-    a.click();
-
-    URL.revokeObjectURL(url);
-    setStatus("SVG exported");
+  const handleSelectDiagram = (diagramText: string, diagramTitle: string) => {
+    setDiagram(diagramText);
+    setTitle(diagramTitle);
+    setStatus("Loaded from history");
+    
+    // Reset view to fit new diagram
+    setHasManuallyZoomed(false);
+    setTimeout(() => {
+      handleFitToScreen(true);
+    }, 100);
   };
+
 
   // Zoom handlers
   const handleZoomIn = () => {
@@ -283,18 +289,6 @@ function App() {
     localStorage.setItem("mindpilot-mcp-dark-mode", isDarkMode.toString());
   }, [isDarkMode]);
 
-  // Save collapsed state to localStorage
-  useEffect(() => {
-    localStorage.setItem("mindpilot-mcp-panel-collapsed", isCollapsed.toString());
-  }, [isCollapsed]);
-
-  // Apply initial collapsed state
-  useEffect(() => {
-    if (isCollapsed && panelRef.current?.collapse) {
-      panelRef.current.collapse();
-    }
-  }, []);
-
   // Handle container resize
   useEffect(() => {
     if (!containerRef.current) return;
@@ -322,6 +316,26 @@ function App() {
   // Keyboard shortcuts and prevent browser zoom
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle history panel with Cmd/Ctrl + B
+      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        if (isHistoryCollapsed) {
+          historyPanelRef.current?.expand();
+        } else {
+          historyPanelRef.current?.collapse();
+        }
+      }
+
+      // Toggle edit panel with Cmd/Ctrl + E
+      if ((e.metaKey || e.ctrlKey) && e.key === "e") {
+        e.preventDefault();
+        if (isEditCollapsed) {
+          editPanelRef.current?.expand();
+        } else {
+          editPanelRef.current?.collapse();
+        }
+      }
+
       // Prevent browser zoom
       if (
         (e.metaKey || e.ctrlKey) &&
@@ -361,7 +375,7 @@ function App() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, []);
+  }, [isHistoryCollapsed, isEditCollapsed]);
 
   // Attach wheel handler to preview container with passive: false
   useEffect(() => {
@@ -426,107 +440,57 @@ function App() {
       className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-neutral-900"}`}
     >
       <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
-        {isCollapsed && (
-          <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                panelRef.current?.expand();
-              }}
-              className="h-8 w-8"
-              title="Show editor"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        {/* History Panel - Left Side */}
         <ResizablePanel
-          ref={panelRef}
-          defaultSize={panelSize}
-          minSize={20}
-          maxSize={80}
+          ref={historyPanelRef}
+          defaultSize={historyPanelSize}
+          minSize={15}
+          maxSize={40}
           collapsible={true}
           collapsedSize={0}
           onResize={(size) => {
             if (size > 0) {
-              setPanelSize(size);
-              localStorage.setItem("mindpilot-mcp-panel-size", size.toString());
+              setHistoryPanelSize(size);
+              localStorage.setItem("mindpilot-mcp-history-panel-size", size.toString());
             }
           }}
           onCollapse={() => {
-            setIsCollapsed(true);
-            // Fit to screen when editor is collapsed
-            setTimeout(() => {
-              if (!hasManuallyZoomed) {
-                handleFitToScreen(true);
-              } else {
-                // Reset manual zoom flag on panel state change
-                setHasManuallyZoomed(false);
-              }
-            }, 300);
+            setIsHistoryCollapsed(true);
+            localStorage.setItem("mindpilot-mcp-history-collapsed", "true");
           }}
           onExpand={() => {
-            setIsCollapsed(false);
-            // Fit to screen when editor is expanded
-            setTimeout(() => {
-              if (!hasManuallyZoomed) {
-                handleFitToScreen(true);
-              } else {
-                // Reset manual zoom flag on panel state change
-                setHasManuallyZoomed(false);
-              }
-            }, 300);
+            setIsHistoryCollapsed(false);
+            localStorage.setItem("mindpilot-mcp-history-collapsed", "false");
           }}
         >
-          {/* panel status bar */}
-          <div
-            className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}
-          >
-            {!isCollapsed && (
-              <>
-                <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-500 p-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      panelRef.current?.collapse();
-                    }}
-                    className="h-8 w-8"
-                    title="Hide editor"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className={`flex-1 p-4 pl-20 ${isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}>
-                  <MermaidEditor
-                    value={diagram}
-                    onChange={setDiagram}
-                    isDarkMode={isDarkMode}
-                  />
-                </div>
-                <div
-                  className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}
-                >
-                  <MCPServerStatus
-                    connectionStatus={connectionStatus}
-                    onReconnect={reconnect}
-                    isDarkMode={isDarkMode}
-                    isCollapsedView={false}
-                  />
-                  <span>{status}</span>
-                </div>
-              </>
-            )}
-          </div>
+          <HistoryPanel
+            onSelectDiagram={handleSelectDiagram}
+            isDarkMode={isDarkMode}
+            isExpanded={!isHistoryCollapsed}
+            currentDiagram={diagram}
+            connectionStatus={connectionStatus}
+            onReconnect={reconnect}
+          />
         </ResizablePanel>
 
         <ResizableHandle className="bg-gray-300 dark:bg-gray-700" />
 
+        {/* Center Panel - Diagram View */}
         <ResizablePanel defaultSize={50}>
           <div
             className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-neutral-100"}`}
           >
+            {/* Title - centered in diagram area */}
+            {title && (
+              <div className="absolute top-4 left-0 right-0 flex justify-center items-center pointer-events-none z-40">
+                <div className={`px-4 py-1 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-white/50"}`}>
+                  <h1 className={`text-lg font-semibold ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
+                    {title}
+                  </h1>
+                </div>
+              </div>
+            )}
+            
             {/* Zoom Controls */}
             <ZoomControls
               zoom={zoom}
@@ -534,6 +498,8 @@ function App() {
               onZoomOut={handleZoomOut}
               onZoomReset={handleZoomReset}
               onFitToScreen={() => handleFitToScreen()}
+              isDarkMode={isDarkMode}
+              onToggleTheme={() => setIsDarkMode(!isDarkMode)}
             />
 
             <div
@@ -543,7 +509,6 @@ function App() {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              // onWheel handler moved to useEffect with passive: false
               style={{ cursor: isPanning ? "grabbing" : "grab" }}
             >
               <div
@@ -560,31 +525,140 @@ function App() {
                   className="[&>svg]:!max-width-none [&>svg]:!max-height-none"
                 />
               </div>
-
-
             </div>
           </div>
         </ResizablePanel>
+
+        <ResizableHandle className="bg-gray-300 dark:bg-gray-700" />
+
+        {/* Edit Panel - Right Side */}
+        <ResizablePanel
+          ref={editPanelRef}
+          defaultSize={editPanelSize}
+          minSize={20}
+          maxSize={50}
+          collapsible={true}
+          collapsedSize={0}
+          onResize={(size) => {
+            if (size > 0) {
+              setEditPanelSize(size);
+              localStorage.setItem("mindpilot-mcp-edit-panel-size", size.toString());
+            }
+          }}
+          onCollapse={() => {
+            setIsEditCollapsed(true);
+            localStorage.setItem("mindpilot-mcp-edit-collapsed", "true");
+            // Fit to screen when editor is collapsed
+            setTimeout(() => {
+              if (!hasManuallyZoomed) {
+                handleFitToScreen(true);
+              } else {
+                setHasManuallyZoomed(false);
+              }
+            }, 300);
+          }}
+          onExpand={() => {
+            setIsEditCollapsed(false);
+            localStorage.setItem("mindpilot-mcp-edit-collapsed", "false");
+            // Fit to screen when editor is expanded
+            setTimeout(() => {
+              if (!hasManuallyZoomed) {
+                handleFitToScreen(true);
+              } else {
+                setHasManuallyZoomed(false);
+              }
+            }, 300);
+          }}
+        >
+          <div
+            className={`h-full flex flex-col ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}
+          >
+            <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-500 p-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  editPanelRef.current?.collapse();
+                }}
+                className="h-8 w-8 group"
+                title="Hide editor (⌘E)"
+              >
+                <Pencil className="h-4 w-4 group-hover:hidden" />
+                <PanelRightClose className="h-4 w-4 hidden group-hover:block" />
+              </Button>
+            </div>
+            {/* Header */}
+            <div className={`relative px-4 py-3 pt-16 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            </div>
+            <div className={`flex-1 p-4 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+              <MermaidEditor
+                value={diagram}
+                onChange={setDiagram}
+                isDarkMode={isDarkMode}
+              />
+            </div>
+            <div
+              className={`p-2 text-xs border-t flex justify-end ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}
+            >
+              <span>{status}</span>
+            </div>
+          </div>
+        </ResizablePanel>
+
+        {/* Menu button - always visible */}
+        <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (isHistoryCollapsed) {
+                historyPanelRef.current?.expand();
+              } else {
+                historyPanelRef.current?.collapse();
+              }
+            }}
+            className="h-8 w-8 group"
+            title={isHistoryCollapsed ? "Show history panel (⌘B)" : "Hide history panel (⌘B)"}
+          >
+            {isHistoryCollapsed ? (
+              <PanelLeft className="h-4 w-4" />
+            ) : (
+              <>
+                <PanelLeft className="h-4 w-4 group-hover:hidden" />
+                <PanelLeftClose className="h-4 w-4 hidden group-hover:block" />
+              </>
+            )}
+          </Button>
+        </div>
+        
+        {/* Edit button - only when collapsed */}
+        {isEditCollapsed && (
+          <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                editPanelRef.current?.expand();
+              }}
+              className="h-8 w-8 group"
+              title="Show editor (⌘E)"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </ResizablePanelGroup>
 
-      {/* Download and Dark Mode */}
-      <TopRightToolBar
-        isDarkMode={isDarkMode}
-        onExport={handleExport}
-        onToggleTheme={() => setIsDarkMode(!isDarkMode)}
-      />
 
 
-      {/* MCP Server Status in bottom left when panel is collapsed */}
+      {/* MCP Server Status in bottom left when both panels are collapsed */}
       <FloatingConnectionStatus
-        isVisible={isCollapsed}
+        isVisible={isEditCollapsed && isHistoryCollapsed}
         connectionStatus={connectionStatus}
         onReconnect={reconnect}
         isDarkMode={isDarkMode}
       />
 
-      { /* Mindpilot Logo */}
-      <Branding />
 
     </div>
   );

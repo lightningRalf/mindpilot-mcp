@@ -23,6 +23,8 @@ import {
 } from "../shared/types.js";
 import { renderMermaid } from "../shared/renderer.js";
 import { validateMermaidSyntax } from "../shared/validator.js";
+import { historyService } from "../shared/historyService.js";
+import { detectGitRepo } from "../shared/gitRepoDetector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -146,13 +148,25 @@ export class SingletonHTTPServer {
       "/api/render",
       async (request: FastifyRequest, reply: FastifyReply) => {
         try {
-          const { diagram, background, clientId, clientName } =
+          const { diagram, background, clientId, clientName, workingDir, title } =
             request.body as any;
           const result = await renderMermaid(diagram, background);
 
           // Update MCP activity
           this.lastMcpActivity = new Date();
           this.cancelShutdownTimer(); // Cancel any pending shutdown
+
+          // Save to history if successful
+          if (result.type === "success" && workingDir && title) {
+            try {
+              const collection = await detectGitRepo(workingDir);
+              await historyService.saveDiagram(diagram, title, collection);
+              logger.info(`Saved diagram "${title}" to collection: ${collection || 'uncollected'}`);
+            } catch (error) {
+              logger.error("Failed to save diagram to history", { error });
+              // Don't fail the render if history save fails
+            }
+          }
 
           // Check if we need to open a browser
           logger.info("About to check browser visibility", {
@@ -171,6 +185,7 @@ export class SingletonHTTPServer {
             clientId,
             clientName,
             diagram: result.diagram,
+            title,
             svg: result.svg,
             error: result.error,
             details: result.details,
@@ -195,6 +210,79 @@ export class SingletonHTTPServer {
         const { diagram } = request.body as any;
         const result = await validateMermaidSyntax(diagram);
         return reply.send(result);
+      },
+    );
+
+    // History API routes
+    this.fastify.get(
+      "/api/history",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { collection } = request.query as any;
+          const diagrams = await historyService.getDiagrams(collection);
+          return reply.send(diagrams);
+        } catch (error) {
+          logger.error("Failed to get history", { error });
+          return reply.code(500).send({ error: "Failed to get history" });
+        }
+      },
+    );
+
+    this.fastify.get(
+      "/api/collections",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const collections = await historyService.getCollections();
+          return reply.send(collections);
+        } catch (error) {
+          logger.error("Failed to get collections", { error });
+          return reply.code(500).send({ error: "Failed to get collections" });
+        }
+      },
+    );
+
+    this.fastify.post(
+      "/api/collections",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { name } = request.body as any;
+          await historyService.createCollection(name);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to create collection", { error });
+          return reply.code(500).send({ error: "Failed to create collection" });
+        }
+      },
+    );
+
+    this.fastify.put(
+      "/api/history/:id/collection",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { id } = request.params as any;
+          const { collection } = request.body as any;
+          await historyService.moveDiagram(id, collection);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to move diagram", { error });
+          return reply.code(500).send({ error: "Failed to move diagram" });
+        }
+      },
+    );
+
+    this.fastify.delete(
+      "/api/history/:id",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { id } = request.params as any;
+          logger.info(`Deleting diagram with id: ${id}`);
+          await historyService.deleteDiagram(id);
+          logger.info(`Successfully deleted diagram: ${id}`);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to delete diagram", { error, id: (request.params as any).id });
+          return reply.code(500).send({ error: "Failed to delete diagram" });
+        }
       },
     );
 

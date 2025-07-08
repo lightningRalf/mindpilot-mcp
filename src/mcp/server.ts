@@ -129,8 +129,13 @@ export class MindpilotMCPClient {
                 description: "Background color",
                 default: "white",
               },
+              title: {
+                type: "string",
+                description: "Title for the diagram (max 50 characters)",
+                maxLength: 50,
+              },
             },
-            required: ["diagram"],
+            required: ["diagram", "title"],
           },
         },
         {
@@ -162,6 +167,7 @@ export class MindpilotMCPClient {
             const renderResult = await this.renderMermaid(
               args?.diagram as string,
               args?.background as string,
+              args?.title as string,
             );
             return {
               content: [
@@ -259,6 +265,7 @@ export class MindpilotMCPClient {
   private async renderMermaid(
     diagram: string,
     background?: string,
+    title?: string,
   ): Promise<RenderResult> {
     // Use HTTP API endpoint
     try {
@@ -272,8 +279,10 @@ export class MindpilotMCPClient {
           body: JSON.stringify({
             diagram,
             background,
+            title,
             clientId: this.clientId,
             clientName: this.clientName,
+            workingDir: process.cwd(),
           }),
           signal: this.getAbortSignal(),
         },
