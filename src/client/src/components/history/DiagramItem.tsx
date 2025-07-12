@@ -45,10 +45,10 @@ export function DiagramItem({
       className={`w-full text-left p-2 rounded transition-colors border-l-2 group ${
         isActive
           ? isDarkMode
-            ? 'bg-orange-600/30 border-orange-500'
+            ? 'bg-orange-500/20 border-orange-500'
             : 'bg-orange-100 border-orange-500'
           : isDarkMode
-            ? 'hover:bg-orange-600/20 active:bg-orange-600/30 border-transparent'
+            ? 'hover:bg-orange-500/10 active:bg-orange-500/20 border-transparent'
             : 'hover:bg-orange-50 active:bg-orange-100 border-transparent'
       }`}
     >

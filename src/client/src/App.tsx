@@ -154,7 +154,7 @@ function App() {
       {/* Title - centered in diagram area */}
       {title && (
         <div className="absolute top-4 left-0 right-0 flex justify-center items-center pointer-events-none z-40">
-          <div className={`px-4 py-1 mt-3 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-gray-100/50"}`}>
+          <div className={`px-4 py-1 mt-3 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-gray-200/50"}`}>
             <h1 className={`text-lg ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
               {title}
             </h1>
