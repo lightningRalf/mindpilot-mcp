@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import mermaid from 'mermaid';
 import { MCPServerStatus } from './MCPServerStatus';
-import { Branding } from './Branding';
 
 interface DiagramHistoryEntry {
   id: string;

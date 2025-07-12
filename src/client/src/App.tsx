@@ -18,6 +18,7 @@ import { useWebSocketStateMachine } from "@/hooks/useWebSocketStateMachine";
 import { MermaidEditor } from "@/components/MermaidEditor";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { HotkeyModal } from "@/components/HotkeyModal";
+import { LoadingSpinner } from "@/components/common";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -66,6 +67,7 @@ function App() {
   const [hasManuallyZoomed, setHasManuallyZoomed] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
   const [showHotkeyModal, setShowHotkeyModal] = useState(false);
+  const [isLoadingDiagram, setIsLoadingDiagram] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
@@ -154,11 +156,15 @@ function App() {
 
     const renderDiagram = async () => {
       try {
+        // Set loading state
+        setIsLoadingDiagram(true);
+        
         // Clear previous content
         previewRef.current!.innerHTML = "";
 
         // Skip rendering if diagram is empty or null
         if (!diagram || diagram.trim() === "") {
+          setIsLoadingDiagram(false);
           return;
         }
 
@@ -189,6 +195,8 @@ function App() {
       } catch (error: any) {
         previewRef.current!.innerHTML = `<div class="text-red-500 p-4">Error: ${error.message}</div>`;
         setStatus("Render error");
+      } finally {
+        setIsLoadingDiagram(false);
       }
     };
 
@@ -534,6 +542,11 @@ function App() {
               onMouseLeave={handleMouseUp}
               style={{ cursor: isPanning ? "grabbing" : "grab" }}
             >
+              {isLoadingDiagram && (
+                <div className="absolute inset-0 flex items-center justify-center z-10">
+                  <LoadingSpinner size="lg" color="orange" />
+                </div>
+              )}
               <div
                 className="w-full h-full flex items-center justify-center"
                 style={{
