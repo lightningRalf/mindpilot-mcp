@@ -14,12 +14,12 @@ import {
 import mermaid from "mermaid";
 import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus";
 import { ZoomControls } from "@/components/ZoomControls";
-import { useMcpServerWebSocket } from "@/hooks/useMcpServerWebSocket";
+import { useDiagramContext, useWebSocketContext, useThemeContext } from "@/contexts";
 import { MermaidEditor } from "@/components/MermaidEditor";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { HotkeyModal } from "@/components/HotkeyModal";
 import { LoadingSpinner } from "@/components/common";
-import { useLocalStorage, useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
+import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
 
@@ -34,17 +34,18 @@ mermaid.initialize({
 });
 
 function App() {
-  // LocalStorage-backed state
-  const [diagram, setDiagram] = useLocalStorage("mindpilot-mcp-last-diagram", "");
-  const [title, setTitle] = useLocalStorage("mindpilot-mcp-last-title", "");
-  const [isDarkMode, setIsDarkMode] = useLocalStorageBoolean("mindpilot-mcp-dark-mode", false);
+  // Get state from contexts
+  const { diagram, title, status, isLoadingDiagram, setDiagram, setTitle, setStatus, setIsLoadingDiagram } = useDiagramContext();
+  const { connectionStatus, reconnect } = useWebSocketContext();
+  const { isDarkMode, toggleTheme } = useThemeContext();
+  
+  // LocalStorage-backed state for UI preferences
   const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
   const [editPanelSize, setEditPanelSize] = useLocalStorageNumber("mindpilot-mcp-edit-panel-size", 30);
+  
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useLocalStorageBoolean("mindpilot-mcp-history-collapsed", false);
   const [historyPanelSize, setHistoryPanelSize] = useLocalStorageNumber("mindpilot-mcp-history-panel-size", 20);
-  const [status, setStatus] = useState("Ready");
   const [showHotkeyModal, setShowHotkeyModal] = useState(false);
-  const [isLoadingDiagram, setIsLoadingDiagram] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
@@ -68,16 +69,6 @@ function App() {
     setHasManuallyZoomed,
   } = usePanZoom(containerRef, previewRef);
 
-  // WebSocket connection to MCP server
-  const { connectionStatus, reconnect } = useMcpServerWebSocket({
-    onDiagramUpdate: (update) => {
-      setDiagram(update.diagram);
-      if (update.title) {
-        setTitle(update.title);
-      }
-    },
-    onStatusUpdate: setStatus,
-  });
 
 
 
@@ -149,14 +140,6 @@ function App() {
 
 
 
-  // Apply dark mode class to body
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [isDarkMode]);
 
   // Handle container resize
   useEffect(() => {
@@ -251,18 +234,22 @@ function App() {
     <div
       className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-neutral-900"}`}
     >
-      <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
+      <ResizablePanelGroup 
+        direction="horizontal" 
+        className="flex-1 relative"
+      >
         {/* History Panel - Left Side */}
         <ResizablePanel
           ref={historyPanelRef}
           defaultSize={isHistoryCollapsed ? 0 : historyPanelSize}
-          minSize={15}
+          minSize={20}
           maxSize={40}
           collapsible={true}
           collapsedSize={0}
           onResize={(size) => {
-            if (size > 0) {
-              setHistoryPanelSize(size);
+            // Only save if size changed significantly (more than 0.5%)
+            if (!isHistoryCollapsed && size > 1 && Math.abs(size - historyPanelSize) > 0.5) {
+              setHistoryPanelSize(Math.round(size));
             }
           }}
           onCollapse={() => {
@@ -308,7 +295,7 @@ function App() {
               onZoomReset={handleZoomReset}
               onFitToScreen={() => handleFitToScreen()}
               isDarkMode={isDarkMode}
-              onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+              onToggleTheme={toggleTheme}
             />
 
             <div
@@ -349,13 +336,14 @@ function App() {
         <ResizablePanel
           ref={editPanelRef}
           defaultSize={isEditCollapsed ? 0 : editPanelSize}
-          minSize={20}
+          minSize={25}
           maxSize={50}
           collapsible={true}
           collapsedSize={0}
           onResize={(size) => {
-            if (size > 0) {
-              setEditPanelSize(size);
+            // Only save if size changed significantly (more than 0.5%)
+            if (!isEditCollapsed && size > 1 && Math.abs(size - editPanelSize) > 0.5) {
+              setEditPanelSize(Math.round(size));
             }
           }}
           onCollapse={() => {
