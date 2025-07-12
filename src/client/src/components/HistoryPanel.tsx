@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import mermaid from 'mermaid';
 import { MCPServerStatus } from './MCPServerStatus';
+import { EmptyState } from './common';
 
 interface DiagramHistoryEntry {
   id: string;
@@ -331,6 +332,18 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
           <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
         ) : history.length === 0 ? (
           <div className="p-4 text-center text-sm text-gray-500">No diagrams yet</div>
+        ) : filteredHistory.length === 0 && searchQuery ? (
+          <EmptyState
+            icon={Search}
+            title="No diagrams found"
+            description={`No diagrams match "${searchQuery}"`}
+            action={{
+              label: "Clear search",
+              onClick: () => setSearchQuery('')
+            }}
+            size="sm"
+            className="mt-8"
+          />
         ) : (
           <div className="px-2 py-2 space-y-2">
             {(organizeByDate ? dateGroupedHistory : groupedHistory).map(([collection, diagrams]) => (
