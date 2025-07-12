@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +32,7 @@ const shortcuts: Shortcut[] = [
   { keys: "?", description: "Show keyboard shortcuts", category: "Help" },
 ];
 
-export const HotkeyModal: React.FC<HotkeyModalProps> = ({ isOpen, onClose, isDarkMode }) => {
+export function HotkeyModal({ isOpen, onClose, isDarkMode }: HotkeyModalProps) {
   // Group shortcuts by category
   const groupedShortcuts = shortcuts.reduce((acc, shortcut) => {
     if (!acc[shortcut.category]) {
@@ -104,6 +103,5 @@ export const HotkeyModal: React.FC<HotkeyModalProps> = ({ isOpen, onClose, isDar
       </DialogContent>
     </Dialog>
   );
-};
+}
 
-export default HotkeyModal;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MCPServerStatus } from './MCPServerStatus';
 import { SearchBar, DiagramList } from './history';
+import { MCPServerStatus } from './connection';
 import { useDiagramHistory, useExportDiagram } from '@/hooks';
 
 export interface HistoryPanelProps {

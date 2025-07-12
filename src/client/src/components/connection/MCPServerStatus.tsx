@@ -6,7 +6,7 @@ interface MCPServerStatusProps {
   isCollapsedView?: boolean;
 }
 
-import { StatusIndicator, StatusType } from './common';
+import { StatusIndicator, StatusType } from '../common';
 
 export function MCPServerStatus({
   connectionStatus,

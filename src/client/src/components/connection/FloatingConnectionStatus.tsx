@@ -1,5 +1,4 @@
-import React from 'react';
-import { MCPServerStatus } from '@/components/MCPServerStatus';
+import { MCPServerStatus } from './MCPServerStatus';
 
 
 interface FloatingConnectionStatusProps {
@@ -10,13 +9,13 @@ interface FloatingConnectionStatusProps {
   className?: string;
 }
 
-export const FloatingConnectionStatus: React.FC<FloatingConnectionStatusProps> = ({
+export function FloatingConnectionStatus({
   isVisible,
   connectionStatus,
   onReconnect,
   isDarkMode,
   className = ''
-}) => {
+}: FloatingConnectionStatusProps) {
   if (!isVisible) return null;
 
   return (
@@ -32,6 +31,5 @@ export const FloatingConnectionStatus: React.FC<FloatingConnectionStatusProps> =
       />
     </div>
   );
-};
+}
 
-export default FloatingConnectionStatus;

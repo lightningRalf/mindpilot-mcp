@@ -1,22 +1,17 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Pencil, PanelRightClose } from "lucide-react";
-import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus";
-import { ZoomControls } from "@/components/ZoomControls";
 import { useDiagramContext, useWebSocketContext, useThemeContext } from "@/contexts";
-import { MermaidEditor } from "@/components/MermaidEditor";
 import { HistoryPanel } from "@/components/HistoryPanel";
-import { HotkeyModal } from "@/components/HotkeyModal";
-import { DiagramRenderer } from "@/components/DiagramRenderer";
-import { PanZoomContainer } from "@/components/PanZoomContainer";
-import { AppLayout } from "@/components/AppLayout";
-import { DiagramTitle } from "@/components/DiagramTitle";
+import { FloatingConnectionStatus } from "@/components/connection";
+import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
+import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor } from "@/components/diagram";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
 
 
-function App() {
+export function App() {
   // Get state from contexts
   const { diagram, setDiagram, setTitle, setCollection, setStatus, title, collection, status } = useDiagramContext();
   const { connectionStatus, reconnect } = useWebSocketContext();
@@ -286,4 +281,3 @@ function App() {
   );
 }
 
-export default App;

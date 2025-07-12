@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Sun, Moon } from "lucide-react";
 
@@ -8,11 +7,11 @@ interface TopRightToolBarProps {
   className?: string;
 }
 
-export const TopRightToolBar: React.FC<TopRightToolBarProps> = ({
+export function TopRightToolBar({
   isDarkMode,
   onToggleTheme,
   className = ''
-}) => {
+}: TopRightToolBarProps) {
   return (
     <div className={`absolute z-10 top-4 right-4 flex items-center gap-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1 ${className}`}>
       <Button
@@ -32,6 +31,5 @@ export const TopRightToolBar: React.FC<TopRightToolBarProps> = ({
       </Button>
     </div>
   );
-};
+}
 
-export default TopRightToolBar;
