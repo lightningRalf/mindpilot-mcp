@@ -31,9 +31,9 @@ interface HistoryPanelProps {
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isDarkMode, isExpanded = true, currentDiagram, connectionStatus, onReconnect }) => {
   const [history, setHistory] = useState<DiagramHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set(['uncategorized']));
+  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [organizeByDate, setOrganizeByDate] = useState(false);
+  const [organizeByDate, setOrganizeByDate] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -255,6 +255,17 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
       setExpandedCollections(collectionsWithResults);
     }
   }, [searchQuery, filteredHistory, organizeByDate, dateGroupedHistory]);
+
+  // Auto-expand the first non-empty group when in date mode
+  useEffect(() => {
+    if (organizeByDate && dateGroupedHistory.length > 0 && expandedCollections.size === 0) {
+      // Find the first group with entries
+      const firstNonEmptyGroup = dateGroupedHistory.find(([_, entries]) => entries.length > 0);
+      if (firstNonEmptyGroup) {
+        setExpandedCollections(new Set([firstNonEmptyGroup[0]]));
+      }
+    }
+  }, [organizeByDate, dateGroupedHistory]);
 
   return (
     <div className={`h-full flex flex-col ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'}`}>

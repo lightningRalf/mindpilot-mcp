@@ -255,7 +255,7 @@ function App() {
         {/* History Panel - Left Side */}
         <ResizablePanel
           ref={historyPanelRef}
-          defaultSize={historyPanelSize}
+          defaultSize={isHistoryCollapsed ? 0 : historyPanelSize}
           minSize={15}
           maxSize={40}
           collapsible={true}
@@ -348,7 +348,7 @@ function App() {
         {/* Edit Panel - Right Side */}
         <ResizablePanel
           ref={editPanelRef}
-          defaultSize={editPanelSize}
+          defaultSize={isEditCollapsed ? 0 : editPanelSize}
           minSize={20}
           maxSize={50}
           collapsible={true}
