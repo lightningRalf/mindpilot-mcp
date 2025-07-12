@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import Editor, { Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
+import { useAnalytics } from '@/hooks';
 
 interface MermaidEditorProps {
   value: string;
@@ -11,6 +12,8 @@ interface MermaidEditorProps {
 export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProps) {
   const monacoRef = useRef<Monaco | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const { trackDiagramUpdated } = useAnalytics();
+  const lastTrackedRef = useRef<number>(Date.now());
 
   const handleEditorWillMount = (monaco: Monaco) => {
     // Define custom dark theme matching the app's dark mode
@@ -143,6 +146,16 @@ export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProp
 
   const handleChange = (value: string | undefined) => {
     onChange(value || '');
+    
+    // Track diagram updates with debouncing (every 5 seconds max)
+    const now = Date.now();
+    if (now - lastTrackedRef.current > 5000) {
+      trackDiagramUpdated({
+        source: 'editor',
+        charactersCount: (value || '').length
+      });
+      lastTrackedRef.current = now;
+    }
   };
 
   useEffect(() => {

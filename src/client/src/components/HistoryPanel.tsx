@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SearchBar, DiagramList } from './history';
 import { MCPServerStatus } from './connection';
-import { useDiagramHistory, useExportDiagram } from '@/hooks';
+import { useDiagramHistory, useExportDiagram, useAnalytics } from '@/hooks';
 
 export interface HistoryPanelProps {
   onSelectDiagram: (diagram: string, title: string, collection?: string | null) => void;
@@ -38,6 +38,9 @@ export function HistoryPanel({
 
   // Use the export hook
   const { exportAsPng } = useExportDiagram({ isDarkMode });
+  
+  // Use analytics
+  const { trackDiagramSelected, trackDiagramExported, trackDiagramDeleted } = useAnalytics();
 
   return (
     <div className={`h-full flex flex-col ${isDarkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white text-neutral-800'}`}>
@@ -102,9 +105,21 @@ export function HistoryPanel({
           openDropdownId={openDropdownId}
           formatDate={formatDate}
           onToggleCollection={toggleCollection}
-          onSelectDiagram={onSelectDiagram}
-          onDownloadDiagram={(entry) => exportAsPng(entry.diagram, entry.title)}
-          onDeleteDiagram={deleteDiagram}
+          onSelectDiagram={(diagram, title, collection) => {
+            onSelectDiagram(diagram, title, collection);
+            trackDiagramSelected({ 
+              source: 'history', 
+              organizedBy: organizeByDate ? 'date' : 'project' 
+            });
+          }}
+          onDownloadDiagram={(entry) => {
+            exportAsPng(entry.diagram, entry.title);
+            trackDiagramExported({ format: 'png' });
+          }}
+          onDeleteDiagram={(entry) => {
+            deleteDiagram(entry);
+            trackDiagramDeleted();
+          }}
           setOpenDropdownId={setOpenDropdownId}
           onClearSearch={() => setSearchQuery('')}
         />

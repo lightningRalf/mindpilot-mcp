@@ -6,3 +6,4 @@ export * from './useWebSocketStateMachine';
 export * from './useMcpServerWebSocket';
 export * from './useExportDiagram';
 export * from './useDiagramHistory';
+export * from './useAnalytics';

@@ -9,6 +9,7 @@ import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor } from "
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 
 export function App() {
@@ -16,6 +17,7 @@ export function App() {
   const { diagram, setDiagram, setTitle, setCollection, setStatus, title, collection, status } = useDiagramContext();
   const { connectionStatus, reconnect } = useWebSocketContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
+  const { trackThemeChanged, trackPanelToggled } = useAnalytics();
 
   // LocalStorage-backed state for UI preferences
   const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
@@ -157,7 +159,10 @@ export function App() {
         onZoomReset={handleZoomReset}
         onFitToScreen={() => handleFitToScreen()}
         isDarkMode={isDarkMode}
-        onToggleTheme={toggleTheme}
+        onToggleTheme={() => {
+          toggleTheme();
+          trackThemeChanged({ theme: isDarkMode ? 'light' : 'dark' });
+        }}
       />
 
       <PanZoomContainer
@@ -239,8 +244,14 @@ export function App() {
       isHistoryCollapsed={isHistoryCollapsed}
       historyPanelSize={historyPanelSize}
       onHistoryResize={setHistoryPanelSize}
-      onHistoryCollapse={() => setIsHistoryCollapsed(true)}
-      onHistoryExpand={() => setIsHistoryCollapsed(false)}
+      onHistoryCollapse={() => {
+        setIsHistoryCollapsed(true);
+        trackPanelToggled({ panel: 'history', action: 'close' });
+      }}
+      onHistoryExpand={() => {
+        setIsHistoryCollapsed(false);
+        trackPanelToggled({ panel: 'history', action: 'open' });
+      }}
       historyPanelRef={historyPanelRef}
 
       // Center Content
@@ -253,6 +264,7 @@ export function App() {
       onEditResize={setEditPanelSize}
       onEditCollapse={() => {
         setIsEditCollapsed(true);
+        trackPanelToggled({ panel: 'editor', action: 'close' });
         // Fit to screen when editor is collapsed
         setTimeout(() => {
           if (!hasManuallyZoomed) {
@@ -264,6 +276,7 @@ export function App() {
       }}
       onEditExpand={() => {
         setIsEditCollapsed(false);
+        trackPanelToggled({ panel: 'editor', action: 'open' });
         // Fit to screen when editor is expanded
         setTimeout(() => {
           if (!hasManuallyZoomed) {
