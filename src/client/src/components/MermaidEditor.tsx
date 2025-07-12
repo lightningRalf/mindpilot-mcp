@@ -21,13 +21,13 @@ export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProp
       colors: {
         'editor.background': '#1f2937', // gray-800
         'editor.foreground': '#f3f4f6', // gray-100
-        'editor.lineHighlightBackground': '#ffffff10', // white with low opacity
-        'editor.lineHighlightBorder': '#ffffff20', // white border with opacity
+        'editor.lineHighlightBackground': '#ea580c20', // orange-600 with opacity
+        'editor.lineHighlightBorder': '#ea580c40', // orange-600 border with opacity
         'editor.selectionBackground': '#4b5563', // gray-600
         'editor.inactiveSelectionBackground': '#374151',
-        'editorCursor.foreground': '#93c5fd', // sky-300
+        'editorCursor.foreground': '#fb923c', // orange-400
         'editorLineNumber.foreground': '#6b7280', // gray-500
-        'editorLineNumber.activeForeground': '#d1d5db', // gray-300
+        'editorLineNumber.activeForeground': '#fb923c', // orange-400
       }
     });
 
@@ -39,12 +39,12 @@ export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProp
       colors: {
         'editor.background': '#ffffff', // white
         'editor.foreground': '#171717', // neutral-900
-        'editor.lineHighlightBackground': '#00000015', // black with low opacity
-        'editor.lineHighlightBorder': '#00000025', // black border with opacity
+        'editor.lineHighlightBackground': '#f9731615', // orange-500 with low opacity
+        'editor.lineHighlightBorder': '#f9731625', // orange-500 border with opacity
         'editor.selectionBackground': '#00000020',
-        'editorCursor.foreground': '#000000',
+        'editorCursor.foreground': '#f97316', // orange-500
         'editorLineNumber.foreground': '#737373', // neutral-500
-        'editorLineNumber.activeForeground': '#404040', // neutral-700
+        'editorLineNumber.activeForeground': '#f97316', // orange-500
       }
     });
 

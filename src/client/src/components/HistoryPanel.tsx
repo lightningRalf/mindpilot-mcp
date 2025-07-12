@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, MoreVertical, Download, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, Calendar, MoreVertical, Download, Trash2, Search, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,8 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
   const [loading, setLoading] = useState(true);
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set(['uncategorized']));
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [organizeByDate, setOrganizeByDate] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (isExpanded) {
@@ -145,12 +147,71 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
     }
   };
 
+  // Filter history based on search query
+  const filteredHistory = React.useMemo(() => {
+    if (!searchQuery.trim()) return history;
+
+    const query = searchQuery.toLowerCase();
+    return history.filter(entry =>
+      entry.title.toLowerCase().includes(query) ||
+      entry.diagram.toLowerCase().includes(query)
+    );
+  }, [history, searchQuery]);
+
+  // Group diagrams by date
+  const dateGroupedHistory = React.useMemo(() => {
+    const groups: Record<string, DiagramHistoryEntry[]> = {};
+
+    filteredHistory.forEach(entry => {
+      const date = new Date(entry.timestamp);
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const lastWeek = new Date(today);
+      lastWeek.setDate(lastWeek.getDate() - 7);
+
+      let groupName: string;
+      if (date.toDateString() === today.toDateString()) {
+        groupName = 'Today';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        groupName = 'Yesterday';
+      } else if (date > lastWeek) {
+        groupName = 'This Week';
+      } else {
+        groupName = 'Older';
+      }
+
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      groups[groupName].push(entry);
+    });
+
+    // Sort diagrams within each group by timestamp (newest first)
+    Object.keys(groups).forEach(group => {
+      groups[group].sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    });
+
+    // Return in a fixed order
+    const orderedGroups: [string, DiagramHistoryEntry[]][] = [];
+    const groupOrder = ['Today', 'Yesterday', 'This Week', 'Older'];
+    groupOrder.forEach(groupName => {
+      if (groups[groupName]) {
+        orderedGroups.push([groupName, groups[groupName]]);
+      }
+    });
+
+    return orderedGroups;
+  }, [filteredHistory]);
+
   // Group diagrams by collection and sort collections by most recent diagram
   const groupedHistory = React.useMemo(() => {
     const groups: Record<string, DiagramHistoryEntry[]> = {};
 
     // Group diagrams by collection
-    history.forEach(entry => {
+    filteredHistory.forEach(entry => {
       const collectionName = entry.collection || 'uncategorized';
       if (!groups[collectionName]) {
         groups[collectionName] = [];
@@ -158,31 +219,111 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
       groups[collectionName].push(entry);
     });
 
-    // Sort diagrams within each collection by timestamp (newest first)
+    // Sort diagrams within each collection alphabetically by title
     Object.keys(groups).forEach(collection => {
       groups[collection].sort((a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        a.title.localeCompare(b.title)
       );
     });
 
-    // Sort collections by the most recent diagram timestamp
-    const sortedCollections = Object.entries(groups).sort(([, diagramsA], [, diagramsB]) => {
-      const latestA = new Date(diagramsA[0].timestamp).getTime();
-      const latestB = new Date(diagramsB[0].timestamp).getTime();
-      return latestB - latestA;
+    // Sort collections alphabetically
+    const sortedCollections = Object.entries(groups).sort(([collectionA], [collectionB]) => {
+      return collectionA.localeCompare(collectionB);
     });
 
     return sortedCollections;
-  }, [history]);
+  }, [filteredHistory]);
+
+  // Auto-expand collections that have search results
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const collectionsWithResults = new Set<string>();
+
+      // Find all collections that have matching diagrams
+      filteredHistory.forEach(entry => {
+        const collectionName = entry.collection || 'uncategorized';
+        collectionsWithResults.add(collectionName);
+      });
+
+      // Also add date groups if in date mode
+      if (organizeByDate) {
+        dateGroupedHistory.forEach(([groupName]) => {
+          collectionsWithResults.add(groupName);
+        });
+      }
+
+      setExpandedCollections(collectionsWithResults);
+    }
+  }, [searchQuery, filteredHistory, organizeByDate, dateGroupedHistory]);
 
   return (
-    <div className={`h-full flex flex-col ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`h-full flex flex-col ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'}`}>
       {/* Header */}
-      <div className={`relative px-4 py-3 pt-16 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between`}>
-        {/* <h2 className="text-sm font-semibold flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          History
-        </h2> */}
+
+      <div className={`font-medium relative px-4 py-6 border-b ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'} flex items-center justify-center`}>
+        {/* <Branding /> */}
+        Mindpilot MCP
+      </div>
+
+      {/* Thin Banner */}
+      <div className={`px-4 py-2 border-b text-xs flex items-center justify-between ${isDarkMode ? 'bg-gray-700/50 text-gray-400 border-gray-700' : 'bg-neutral-200 text-gray-900 border-neutral-300'}`}>
+        <span>Saved Diagrams</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setOrganizeByDate(false)}
+            className={`px-2 py-0.5 rounded transition-colors ${
+              !organizeByDate
+                ? isDarkMode
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-orange-500 text-white'
+                : isDarkMode
+                  ? 'hover:bg-orange-600/20 text-gray-400'
+                  : 'hover:bg-orange-100 text-gray-600'
+            }`}
+          >
+            By Project
+          </button>
+          <button
+            onClick={() => setOrganizeByDate(true)}
+            className={`px-2 py-0.5 rounded transition-colors ${
+              organizeByDate
+                ? isDarkMode
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-orange-500 text-white'
+                : isDarkMode
+                  ? 'hover:bg-orange-600/20 text-gray-400'
+                  : 'hover:bg-orange-100 text-gray-600'
+            }`}
+          >
+            By Date
+          </button>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className={`border-b px-4 py-2 ${isDarkMode ? 'bg-gray-700/30 border-gray-700' : 'bg-neutral-100 border-gray-200'}`}>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search diagrams..."
+            className={`w-full pl-8 pr-8 py-1.5 text-sm rounded ${
+              isDarkMode
+                ? 'bg-gray-800 text-gray-100 border-gray-600'
+                : 'bg-white text-gray-900 border-gray-300'
+            } border focus:outline-none focus:ring-1 focus:ring-blue-500`}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* History List */}
@@ -192,16 +333,16 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
         ) : history.length === 0 ? (
           <div className="p-4 text-center text-sm text-gray-500">No diagrams yet</div>
         ) : (
-          <div className="pl-2 py-2 pr-0 space-y-2">
-            {groupedHistory.map(([collection, diagrams]) => (
-              <div key={collection} className="space-y-1 pr-6">
+          <div className="px-2 py-2 space-y-2">
+            {(organizeByDate ? dateGroupedHistory : groupedHistory).map(([collection, diagrams]) => (
+              <div key={collection} className="space-y-1">
                 {/* Collection Header */}
                 <button
                   onClick={() => toggleCollection(collection)}
                   className={`w-full flex items-center gap-2 px-2 py-1 rounded transition-colors ${
                     isDarkMode
-                      ? 'hover:bg-sky-700 text-gray-300'
-                      : 'hover:bg-indigo-50 text-gray-700'
+                      ? 'hover:bg-orange-600/20 text-gray-300'
+                      : 'hover:bg-orange-50 text-gray-700'
                   }`}
                 >
                   {expandedCollections.has(collection) ? (
@@ -209,13 +350,17 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
                   ) : (
                     <ChevronRight className="h-3 w-3" />
                   )}
-                  <Folder className="h-4 w-4" />
+                  {organizeByDate ? (
+                    <Calendar className="h-4 w-4" />
+                  ) : (
+                    <Folder className="h-4 w-4" />
+                  )}
                   <span className="text-sm font-medium">{collection}</span>
                 </button>
 
                 {/* Collection Diagrams */}
                 {expandedCollections.has(collection) && (
-                  <div className="pl-4 pr-2 space-y-1">
+                  <div className="pl-6 space-y-1">
                     {diagrams.map((entry) => {
                       const isActive = currentDiagram === entry.diagram;
                       return (
@@ -225,11 +370,11 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
                           className={`w-full text-left p-2 rounded transition-colors border-l-2 group ${
                             isActive
                               ? isDarkMode
-                                ? 'bg-gray-700 border-blue-500'
-                                : 'bg-gray-200 border-blue-500'
+                                ? 'bg-orange-600/30 border-orange-500'
+                                : 'bg-orange-100 border-orange-500'
                               : isDarkMode
-                                ? 'hover:bg-sky-700 active:bg-sky-600 border-transparent'
-                                : 'hover:bg-indigo-50 active:bg-indigo-100 border-transparent'
+                                ? 'hover:bg-orange-600/20 active:bg-orange-600/30 border-transparent'
+                                : 'hover:bg-orange-50 active:bg-orange-100 border-transparent'
                           }`}
                         >
                         <div className="flex items-start justify-between gap-2">
@@ -308,7 +453,6 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ onSelectDiagram, isD
           isDarkMode={isDarkMode}
           isCollapsedView={false}
         />
-        <Branding />
       </div>
     </div>
   );

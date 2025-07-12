@@ -17,6 +17,7 @@ import { ZoomControls } from "@/components/ZoomControls";
 import { useWebSocketStateMachine } from "@/hooks/useWebSocketStateMachine";
 import { MermaidEditor } from "@/components/MermaidEditor";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { HotkeyModal } from "@/components/HotkeyModal";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -29,8 +30,14 @@ mermaid.initialize({
 });
 
 function App() {
-  const [diagram, setDiagram] = useState("");
-  const [title, setTitle] = useState("");
+  const [diagram, setDiagram] = useState(() => {
+    const saved = localStorage.getItem("mindpilot-mcp-last-diagram");
+    return saved || "";
+  });
+  const [title, setTitle] = useState(() => {
+    const saved = localStorage.getItem("mindpilot-mcp-last-title");
+    return saved || "";
+  });
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem("mindpilot-mcp-dark-mode");
     return saved === "true";
@@ -58,6 +65,7 @@ function App() {
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
   const [hasManuallyZoomed, setHasManuallyZoomed] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
+  const [showHotkeyModal, setShowHotkeyModal] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
@@ -192,7 +200,7 @@ function App() {
     setDiagram(diagramText);
     setTitle(diagramTitle);
     setStatus("Loaded from history");
-    
+
     // Reset view to fit new diagram
     setHasManuallyZoomed(false);
     setTimeout(() => {
@@ -289,6 +297,15 @@ function App() {
     localStorage.setItem("mindpilot-mcp-dark-mode", isDarkMode.toString());
   }, [isDarkMode]);
 
+  // Save diagram and title to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("mindpilot-mcp-last-diagram", diagram);
+  }, [diagram]);
+
+  useEffect(() => {
+    localStorage.setItem("mindpilot-mcp-last-title", title);
+  }, [title]);
+
   // Handle container resize
   useEffect(() => {
     if (!containerRef.current) return;
@@ -336,6 +353,12 @@ function App() {
         }
       }
 
+      // Toggle hotkey modal with ?
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShowHotkeyModal(prev => !prev);
+      }
+
       // Prevent browser zoom
       if (
         (e.metaKey || e.ctrlKey) &&
@@ -375,7 +398,7 @@ function App() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [isHistoryCollapsed, isEditCollapsed]);
+  }, [isHistoryCollapsed, isEditCollapsed, showHotkeyModal]);
 
   // Attach wheel handler to preview container with passive: false
   useEffect(() => {
@@ -483,14 +506,14 @@ function App() {
             {/* Title - centered in diagram area */}
             {title && (
               <div className="absolute top-4 left-0 right-0 flex justify-center items-center pointer-events-none z-40">
-                <div className={`px-4 py-1 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-white/50"}`}>
+                <div className={`px-4 py-1 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-gray-100/50"}`}>
                   <h1 className={`text-lg font-semibold ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
                     {title}
                   </h1>
                 </div>
               </div>
             )}
-            
+
             {/* Zoom Controls */}
             <ZoomControls
               zoom={zoom}
@@ -588,8 +611,8 @@ function App() {
               </Button>
             </div>
             {/* Header */}
-            <div className={`relative px-4 py-3 pt-16 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            </div>
+            <div className={`relative px-4 py-6 border-b flex items-center justify-center font-medium ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>Mermaid Editor</div>
+
             <div className={`flex-1 p-4 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
               <MermaidEditor
                 value={diagram}
@@ -630,7 +653,7 @@ function App() {
             )}
           </Button>
         </div>
-        
+
         {/* Edit button - only when collapsed */}
         {isEditCollapsed && (
           <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
@@ -659,6 +682,12 @@ function App() {
         isDarkMode={isDarkMode}
       />
 
+      {/* Hotkey Modal */}
+      <HotkeyModal
+        isOpen={showHotkeyModal}
+        onClose={() => setShowHotkeyModal(false)}
+        isDarkMode={isDarkMode}
+      />
 
     </div>
   );
