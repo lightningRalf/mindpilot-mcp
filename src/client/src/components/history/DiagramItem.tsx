@@ -20,7 +20,7 @@ export interface DiagramItemProps {
   isActive: boolean;
   isDarkMode: boolean;
   formatDate: (dateString: string) => string;
-  onSelect: (diagram: string, title: string) => void;
+  onSelect: (diagram: string, title: string, collection?: string | null) => void;
   onDownload: (entry: DiagramHistoryEntry) => void;
   onDelete: (entry: DiagramHistoryEntry) => void;
   openDropdownId: string | null;
@@ -41,7 +41,7 @@ export function DiagramItem({
   return (
     <button
       key={entry.id}
-      onClick={() => onSelect(entry.diagram, entry.title)}
+      onClick={() => onSelect(entry.diagram, entry.title, entry.collection)}
       className={`w-full text-left p-2 rounded transition-colors border-l-2 group ${
         isActive
           ? isDarkMode

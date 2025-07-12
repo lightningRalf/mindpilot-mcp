@@ -4,7 +4,7 @@ import { SearchBar, DiagramList } from './history';
 import { useDiagramHistory, useExportDiagram } from '@/hooks';
 
 export interface HistoryPanelProps {
-  onSelectDiagram: (diagram: string, title: string) => void;
+  onSelectDiagram: (diagram: string, title: string, collection?: string | null) => void;
   isDarkMode: boolean;
   isExpanded?: boolean;
   currentDiagram?: string;

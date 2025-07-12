@@ -15,7 +15,7 @@ export interface DiagramListProps {
   openDropdownId: string | null;
   formatDate: (dateString: string) => string;
   onToggleCollection: (collection: string) => void;
-  onSelectDiagram: (diagram: string, title: string) => void;
+  onSelectDiagram: (diagram: string, title: string, collection?: string | null) => void;
   onDownloadDiagram: (entry: DiagramHistoryEntry) => void;
   onDeleteDiagram: (entry: DiagramHistoryEntry) => void;
   setOpenDropdownId: (id: string | null) => void;

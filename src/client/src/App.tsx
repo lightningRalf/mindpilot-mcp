@@ -10,6 +10,7 @@ import { HotkeyModal } from "@/components/HotkeyModal";
 import { DiagramRenderer } from "@/components/DiagramRenderer";
 import { PanZoomContainer } from "@/components/PanZoomContainer";
 import { AppLayout } from "@/components/AppLayout";
+import { DiagramTitle } from "@/components/DiagramTitle";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
@@ -17,7 +18,7 @@ import { usePanZoom } from "@/hooks/usePanZoom";
 
 function App() {
   // Get state from contexts
-  const { diagram, setDiagram, setTitle, setStatus, title, status } = useDiagramContext();
+  const { diagram, setDiagram, setTitle, setCollection, setStatus, title, collection, status } = useDiagramContext();
   const { connectionStatus, reconnect } = useWebSocketContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
 
@@ -54,11 +55,12 @@ function App() {
 
 
 
-  const handleSelectDiagram = useCallback((diagramText: string, diagramTitle: string) => {
+  const handleSelectDiagram = useCallback((diagramText: string, diagramTitle: string, diagramCollection?: string | null) => {
     setDiagram(diagramText);
     setTitle(diagramTitle);
+    setCollection(diagramCollection || null);
     setStatus("Loaded from history");
-  }, [setDiagram, setTitle, setStatus]);
+  }, [setDiagram, setTitle, setCollection, setStatus]);
 
 
 
@@ -151,16 +153,7 @@ function App() {
   // Center panel content
   const centerContent = (
     <div className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-neutral-100"}`}>
-      {/* Title - centered in diagram area */}
-      {title && (
-        <div className="absolute top-4 left-0 right-0 flex justify-center items-center pointer-events-none z-40">
-          <div className={`px-4 py-1 mt-3 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-gray-200/50"}`}>
-            <h1 className={`text-lg ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-              {title}
-            </h1>
-          </div>
-        </div>
-      )}
+      <DiagramTitle title={title} collection={collection} isDarkMode={isDarkMode} />
 
       <ZoomControls
         zoom={zoom}
