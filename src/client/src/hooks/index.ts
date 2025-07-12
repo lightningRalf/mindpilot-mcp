@@ -4,3 +4,5 @@ export * from './usePanZoom';
 export * from './useWebSocket';
 export * from './useWebSocketStateMachine';
 export * from './useMcpServerWebSocket';
+export * from './useExportDiagram';
+export * from './useDiagramHistory';

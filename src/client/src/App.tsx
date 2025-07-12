@@ -20,11 +20,11 @@ function App() {
   const { diagram, setDiagram, setTitle, setStatus, title, status } = useDiagramContext();
   const { connectionStatus, reconnect } = useWebSocketContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
-  
+
   // LocalStorage-backed state for UI preferences
   const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
   const [editPanelSize, setEditPanelSize] = useLocalStorageNumber("mindpilot-mcp-edit-panel-size", 30);
-  
+
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useLocalStorageBoolean("mindpilot-mcp-history-collapsed", false);
   const [historyPanelSize, setHistoryPanelSize] = useLocalStorageNumber("mindpilot-mcp-history-panel-size", 20);
   const [showHotkeyModal, setShowHotkeyModal] = useState(false);
@@ -32,7 +32,7 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
   const historyPanelRef = useRef<any>(null);
-  
+
   // Use the pan/zoom hook
   const {
     zoom,
@@ -154,15 +154,14 @@ function App() {
       {/* Title - centered in diagram area */}
       {title && (
         <div className="absolute top-4 left-0 right-0 flex justify-center items-center pointer-events-none z-40">
-          <div className={`px-4 py-1 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-gray-100/50"}`}>
-            <h1 className={`text-lg font-semibold ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
+          <div className={`px-4 py-1 mt-3 rounded-lg backdrop-blur-md ${isDarkMode ? "bg-gray-900/50" : "bg-gray-100/50"}`}>
+            <h1 className={`text-lg ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
               {title}
             </h1>
           </div>
         </div>
       )}
 
-      {/* Zoom Controls */}
       <ZoomControls
         zoom={zoom}
         onZoomIn={handleZoomIn}
@@ -192,7 +191,6 @@ function App() {
     </div>
   );
 
-  // Edit panel content
   const editPanelContent = (
     <div className={`h-full flex flex-col ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
       <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-500 p-1">
@@ -227,7 +225,6 @@ function App() {
     </div>
   );
 
-  // Floating elements
   const floatingElements = (
     <>
       {/* MCP Server Status in bottom left when both panels are collapsed */}
@@ -257,10 +254,10 @@ function App() {
       onHistoryCollapse={() => setIsHistoryCollapsed(true)}
       onHistoryExpand={() => setIsHistoryCollapsed(false)}
       historyPanelRef={historyPanelRef}
-      
+
       // Center Content
       centerContent={centerContent}
-      
+
       // Edit Panel
       editPanel={editPanelContent}
       isEditCollapsed={isEditCollapsed}
@@ -289,7 +286,7 @@ function App() {
         }, 300);
       }}
       editPanelRef={editPanelRef}
-      
+
       // Floating elements
       floatingElements={floatingElements}
     />
