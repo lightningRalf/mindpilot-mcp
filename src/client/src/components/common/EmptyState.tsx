@@ -60,33 +60,33 @@ export function EmptyState({
         <Icon
           className={cn(
             config.icon,
-            'text-gray-400 dark:text-gray-600'
+            'text-neutral-400 dark:text-neutral-600'
           )}
         />
       )}
-      
+
       <div className={cn('space-y-1', size === 'sm' && 'space-y-0.5')}>
         <h3
           className={cn(
             config.title,
-            'font-medium text-gray-600 dark:text-gray-400'
+            'font-medium text-neutral-600 dark:text-neutral-400'
           )}
         >
           {title}
         </h3>
-        
+
         {description && (
           <p
             className={cn(
               config.description,
-              'text-gray-500 dark:text-gray-500'
+              'text-neutral-500 dark:text-neutral-500'
             )}
           >
             {description}
           </p>
         )}
       </div>
-      
+
       {action && (
         <button
           onClick={action.onClick}
@@ -95,7 +95,7 @@ export function EmptyState({
             'text-orange-600 hover:text-orange-700 hover:bg-orange-50',
             'dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20',
             'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2',
-            'dark:focus:ring-offset-gray-800'
+            'dark:focus:ring-offset-neutral-800'
           )}
         >
           {action.label}

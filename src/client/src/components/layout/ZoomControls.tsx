@@ -23,7 +23,7 @@ export function ZoomControls({
   className = ''
 }: ZoomControlsProps) {
   return (
-    <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1 z-50 ${className}`}>
+    <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm rounded-lg border border-neutral-200 dark:border-neutral-600 p-1 z-50 ${className}`}>
       <Button
         variant="ghost"
         size="sm"
@@ -53,7 +53,7 @@ export function ZoomControls({
       >
         <ZoomIn className="h-4 w-4" />
       </Button>
-      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 flex-shrink-0" />
+      <div className="w-px h-6 bg-neutral-300 dark:bg-neutral-600 mx-1 flex-shrink-0" />
       <Button
         variant="ghost"
         size="sm"
@@ -63,7 +63,7 @@ export function ZoomControls({
       >
         <Maximize2 className="h-4 w-4" />
       </Button>
-      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1 flex-shrink-0" />
+      <div className="w-px h-6 bg-neutral-300 dark:bg-neutral-600 mx-1 flex-shrink-0" />
       <Button
         variant="ghost"
         size="sm"
@@ -80,4 +80,3 @@ export function ZoomControls({
     </div>
   );
 }
-

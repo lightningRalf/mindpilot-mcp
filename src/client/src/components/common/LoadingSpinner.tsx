@@ -19,7 +19,7 @@ const sizeConfig = {
 const colorConfig = {
   blue: 'text-blue-500 dark:text-blue-400',
   orange: 'text-orange-500 dark:text-orange-400',
-  gray: 'text-gray-500 dark:text-gray-400',
+  gray: 'text-neutral-500 dark:text-neutral-400',
   green: 'text-green-500 dark:text-green-400',
   red: 'text-red-500 dark:text-red-400',
 };
@@ -54,7 +54,7 @@ export function LoadingSpinner({
     <div className={cn('flex flex-col items-center gap-3', className)}>
       {spinner}
       {message && (
-        <span className={cn(config.text, 'text-gray-600 dark:text-gray-400')}>
+        <span className={cn(config.text, 'text-neutral-600 dark:text-neutral-400')}>
           {message}
         </span>
       )}
@@ -63,7 +63,7 @@ export function LoadingSpinner({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm z-50">
         {content}
       </div>
     );

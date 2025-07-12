@@ -57,11 +57,11 @@ export function DiagramItem({
           <h4 className={`text-sm font-medium truncate ${
             isActive
               ? isDarkMode ? 'text-orange-300' : 'text-orange-700'
-              : isDarkMode ? 'text-gray-200' : 'text-gray-900'
+              : isDarkMode ? 'text-neutral-200' : 'text-neutral-900'
           }`}>
             {entry.title}
           </h4>
-          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className={`text-xs ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
             {formatDate(entry.lastEdited)}
           </p>
         </div>
@@ -71,7 +71,7 @@ export function DiagramItem({
               onClick={(e) => {
                 e.stopPropagation();
               }}
-              className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors`}
+              className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors`}
             >
               <MoreVertical className="h-4 w-4" />
             </DropdownMenuTrigger>

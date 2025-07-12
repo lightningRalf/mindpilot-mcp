@@ -60,7 +60,7 @@ export function AppLayout({
   const { isDarkMode } = useThemeContext();
 
   return (
-    <div className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-neutral-900"}`}>
+    <div className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-neutral-900" : "bg-neutral-900"}`}>
       <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
         {/* History Panel - Left Side */}
         <ResizablePanel
@@ -82,14 +82,14 @@ export function AppLayout({
           {historyPanel}
         </ResizablePanel>
 
-        <ResizableHandle className="bg-gray-300 dark:bg-gray-700" />
+        <ResizableHandle className="bg-neutral-300 dark:bg-neutral-700" />
 
         {/* Center Panel - Diagram View */}
         <ResizablePanel defaultSize={50}>
           {centerContent}
         </ResizablePanel>
 
-        <ResizableHandle className="bg-gray-300 dark:bg-gray-700" />
+        <ResizableHandle className="bg-neutral-300 dark:bg-neutral-700" />
 
         {/* Edit Panel - Right Side */}
         <ResizablePanel
@@ -112,7 +112,7 @@ export function AppLayout({
         </ResizablePanel>
 
         {/* Menu button - always visible */}
-        <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
+        <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm rounded-lg border border-neutral-200 dark:border-neutral-600 p-1">
           <Button
             variant="ghost"
             size="icon"
@@ -139,7 +139,7 @@ export function AppLayout({
 
         {/* Edit button - only when collapsed */}
         {isEditCollapsed && (
-          <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
+          <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm rounded-lg border border-neutral-200 dark:border-neutral-600 p-1">
             <Button
               variant="ghost"
               size="icon"

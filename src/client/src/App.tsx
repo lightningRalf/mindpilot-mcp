@@ -147,7 +147,7 @@ export function App() {
 
   // Center panel content
   const centerContent = (
-    <div className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-neutral-100"}`}>
+    <div className={`h-full flex flex-col relative ${isDarkMode ? "bg-neutral-800" : "bg-neutral-100"}`}>
       <DiagramTitle title={title} collection={collection} isDarkMode={isDarkMode} />
 
       <ZoomControls
@@ -180,8 +180,8 @@ export function App() {
   );
 
   const editPanelContent = (
-    <div className={`h-full flex flex-col ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
-      <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-500 p-1">
+    <div className={`h-full flex flex-col ${isDarkMode ? "bg-neutral-800" : "bg-neutral-50"}`}>
+      <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm rounded-lg border border-neutral-300 dark:border-neutral-500 p-1">
         <Button
           variant="ghost"
           size="icon"
@@ -196,18 +196,18 @@ export function App() {
         </Button>
       </div>
       {/* Header */}
-      <div className={`relative px-4 py-6 border-b flex items-center justify-center font-medium ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
+      <div className={`relative px-4 py-6 border-b flex items-center justify-center font-medium ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-neutral-50 border-neutral-200 text-neutral-800'}`}>
         Mermaid Editor
       </div>
 
-      <div className={`flex-1 p-4 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+      <div className={`flex-1 p-4 ${isDarkMode ? "bg-neutral-800" : "bg-neutral-50"}`}>
         <MermaidEditor
           value={diagram}
           onChange={setDiagram}
           isDarkMode={isDarkMode}
         />
       </div>
-      <div className={`p-2 text-xs border-t flex justify-end ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}>
+      <div className={`p-2 text-xs border-t flex justify-end ${isDarkMode ? "text-neutral-400 border-neutral-700" : "text-muted-foreground border-neutral-300"}`}>
         <span>{status}</span>
       </div>
     </div>
@@ -280,4 +280,3 @@ export function App() {
     />
   );
 }
-

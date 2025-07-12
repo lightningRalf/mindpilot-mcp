@@ -41,11 +41,11 @@ export function DiagramList({
   onClearSearch,
 }: DiagramListProps) {
   if (loading) {
-    return <div className="p-4 text-center text-sm text-gray-500">Loading...</div>;
+    return <div className="p-4 text-center text-sm text-neutral-500">Loading...</div>;
   }
 
   if (totalDiagrams === 0) {
-    return <div className="p-4 text-center text-sm text-gray-500">No diagrams yet</div>;
+    return <div className="p-4 text-center text-sm text-neutral-500">No diagrams yet</div>;
   }
 
   if (groupedData.length === 0 && searchQuery) {
@@ -73,8 +73,8 @@ export function DiagramList({
             onClick={() => onToggleCollection(collection)}
             className={`w-full flex items-center gap-2 px-2 py-1 rounded transition-colors ${
               isDarkMode
-                ? 'hover:bg-orange-600/20 text-gray-300'
-                : 'hover:bg-orange-50 text-gray-700'
+                ? 'hover:bg-orange-600/20 text-neutral-300'
+                : 'hover:bg-orange-50 text-neutral-700'
             }`}
           >
             {expandedCollections.has(collection) ? (

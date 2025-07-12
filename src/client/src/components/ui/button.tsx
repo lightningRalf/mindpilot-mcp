@@ -13,7 +13,7 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "bg-white border border-neutral-200 hover:bg-indigo-50 hover:text-nuetral-900 hover:border-neutral-300    dark:border-gray-600 dark:bg-sky-800/50 dark:hover:bg-sky-700 dark:text-sky-100 dark:hover:text-sky-50",
+          "bg-white border border-neutral-200 hover:bg-indigo-50 hover:text-nuetral-900 hover:border-neutral-300    dark:border-neutral-600 dark:bg-sky-800/50 dark:hover:bg-sky-700 dark:text-sky-100 dark:hover:text-sky-50",
         secondary: "bg-sky-50 text-sky-900 hover:bg-sky-100 dark:bg-sky-700 dark:text-sky-100 dark:hover:bg-sky-600",
         ghost: "hover:bg-orange-100 hover:text-orange-900 dark:hover:bg-orange-500/10 dark:hover:text-orange-200",
         link: "text-sky-500 underline-offset-4 hover:underline dark:text-sky-300",

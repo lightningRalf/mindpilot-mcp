@@ -13,7 +13,7 @@ export function TopRightToolBar({
   className = ''
 }: TopRightToolBarProps) {
   return (
-    <div className={`absolute z-10 top-4 right-4 flex items-center gap-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1 ${className}`}>
+    <div className={`absolute z-10 top-4 right-4 flex items-center gap-2 bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm rounded-lg border border-neutral-200 dark:border-neutral-600 p-1 ${className}`}>
       <Button
         variant="ghost"
         size="icon"
@@ -32,4 +32,3 @@ export function TopRightToolBar({
     </div>
   );
 }
-

@@ -56,7 +56,7 @@ export function MCPServerStatus({
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
         <StatusIndicator status="disconnected" size="sm" />
-        <span className="text-xs font-normal text-neutral-500 dark:text-gray-400">Reconnect</span>
+        <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">Reconnect</span>
       </button>
     );
   }
@@ -65,7 +65,7 @@ export function MCPServerStatus({
   return (
     <div className="flex items-center gap-2">
       <StatusIndicator status={statusType} size="sm" />
-      <span className="text-xs font-normal text-neutral-500 dark:text-gray-400">{displayStatus}</span>
+      <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">{displayStatus}</span>
     </div>
   );
 }

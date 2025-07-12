@@ -12,13 +12,13 @@ export interface HistoryPanelProps {
   onReconnect: () => void;
 }
 
-export function HistoryPanel({ 
-  onSelectDiagram, 
-  isDarkMode, 
-  isExpanded = true, 
-  currentDiagram, 
-  connectionStatus, 
-  onReconnect 
+export function HistoryPanel({
+  onSelectDiagram,
+  isDarkMode,
+  isExpanded = true,
+  currentDiagram,
+  connectionStatus,
+  onReconnect
 }: HistoryPanelProps) {
   const [organizeByDate, setOrganizeByDate] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,16 +40,16 @@ export function HistoryPanel({
   const { exportAsPng } = useExportDiagram({ isDarkMode });
 
   return (
-    <div className={`h-full flex flex-col ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'}`}>
+    <div className={`h-full flex flex-col ${isDarkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white text-neutral-800'}`}>
       {/* Header */}
-      <div className={`font-medium relative px-4 py-6 border-b ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'} flex items-center justify-center`}>
+      <div className={`font-medium relative px-4 py-6 border-b ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-neutral-50 border-neutral-200 text-neutral-800'} flex items-center justify-center`}>
         <span>Mindpilot MCP</span>
       </div>
 
       {/* Thin Banner with Saved Diagrams and Toggle */}
-      <div className={`px-4 py-2 border-b text-xs flex items-center justify-between ${isDarkMode ? 'bg-gray-700/50 text-gray-400 border-gray-700' : 'bg-neutral-200 text-gray-900 border-neutral-300'}`}>
+      <div className={`px-4 py-2 border-b text-xs flex items-center justify-between ${isDarkMode ? 'bg-neutral-700/50 text-neutral-400 border-neutral-700' : 'bg-neutral-200 text-neutral-900 border-neutral-300'}`}>
         <span>Saved Diagrams</span>
-        <div className="flex items-center gap-0.5 bg-gray-300 dark:bg-gray-600 p-0.5 rounded">
+        <div className="flex items-center gap-0.5 bg-neutral-300 dark:bg-neutral-600 p-0.5 rounded">
           <button
             onClick={() => setOrganizeByDate(false)}
             className={`px-2 py-0.5 rounded transition-colors ${
@@ -58,8 +58,8 @@ export function HistoryPanel({
                   ? 'bg-orange-600 text-white'
                   : 'bg-orange-500 text-white'
                 : isDarkMode
-                  ? 'hover:bg-orange-600/20 text-gray-400'
-                  : 'hover:bg-orange-100 text-gray-600'
+                  ? 'hover:bg-orange-600/20 text-neutral-400'
+                  : 'hover:bg-orange-100 text-neutral-600'
             }`}
           >
             By Project
@@ -72,8 +72,8 @@ export function HistoryPanel({
                   ? 'bg-orange-600 text-white'
                   : 'bg-orange-500 text-white'
                 : isDarkMode
-                  ? 'hover:bg-orange-600/20 text-gray-400'
-                  : 'hover:bg-orange-100 text-gray-600'
+                  ? 'hover:bg-orange-600/20 text-neutral-400'
+                  : 'hover:bg-orange-100 text-neutral-600'
             }`}
           >
             By Date
@@ -112,7 +112,7 @@ export function HistoryPanel({
 
       {/* Status Bar */}
       <div
-        className={`p-2 text-xs border-t flex items-center justify-between ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}
+        className={`p-2 text-xs border-t flex items-center justify-between ${isDarkMode ? "text-neutral-400 border-neutral-700" : "text-muted-foreground border-neutral-300"}`}
       >
         <MCPServerStatus
           connectionStatus={connectionStatus}
