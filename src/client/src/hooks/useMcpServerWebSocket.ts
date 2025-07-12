@@ -92,7 +92,7 @@ export function useMcpServerWebSocket({
   // Map state machine states to UI-friendly status messages
   const connectionStatus = useMemo(() => {
     switch (state) {
-      case 'connected': return 'Connected';
+      case 'connected': return 'Connected to MCP host';
       case 'connecting': return 'Connecting...';
       case 'reconnecting': return 'Reconnecting...';
       case 'failed': return 'Disconnected';

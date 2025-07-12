@@ -13,19 +13,24 @@ export function MCPServerStatus({
   onReconnect,
   isCollapsedView = false,
 }: MCPServerStatusProps) {
-  const isDisconnected = connectionStatus === "Disconnected" ||
-    connectionStatus === "Connection error" ||
-    connectionStatus === "Connection timed out";
+  const isDisconnected = connectionStatus.toLowerCase().includes("disconnect") ||
+    connectionStatus.toLowerCase().includes("error") ||
+    connectionStatus.toLowerCase().includes("timed out");
+
+  const isConnected = connectionStatus.toLowerCase().includes("connected") && 
+    !connectionStatus.toLowerCase().includes("disconnected");
+
+  const isReconnecting = connectionStatus.toLowerCase().includes("reconnecting");
 
   // Remove countdown timer from reconnecting status
-  const displayStatus = connectionStatus.startsWith("Reconnecting")
+  const displayStatus = isReconnecting
     ? "Reconnecting"
     : connectionStatus;
 
   // Map connection status to StatusType
-  const statusType: StatusType = connectionStatus === "Connected"
+  const statusType: StatusType = isConnected
     ? "connected"
-    : connectionStatus.startsWith("Reconnecting")
+    : isReconnecting
       ? "reconnecting"
       : "disconnected";
 
