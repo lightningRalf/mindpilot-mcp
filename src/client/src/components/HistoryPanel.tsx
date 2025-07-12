@@ -49,7 +49,7 @@ export function HistoryPanel({
       {/* Thin Banner with Saved Diagrams and Toggle */}
       <div className={`px-4 py-2 border-b text-xs flex items-center justify-between ${isDarkMode ? 'bg-gray-700/50 text-gray-400 border-gray-700' : 'bg-neutral-200 text-gray-900 border-neutral-300'}`}>
         <span>Saved Diagrams</span>
-        <div className="flex items-center gap-0.5 bg-gray-200 dark:bg-gray-600 p-0.5 rounded">
+        <div className="flex items-center gap-0.5 bg-gray-300 dark:bg-gray-600 p-0.5 rounded">
           <button
             onClick={() => setOrganizeByDate(false)}
             className={`px-2 py-0.5 rounded transition-colors ${
