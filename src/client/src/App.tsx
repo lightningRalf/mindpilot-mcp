@@ -19,6 +19,7 @@ import { MermaidEditor } from "@/components/MermaidEditor";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { HotkeyModal } from "@/components/HotkeyModal";
 import { LoadingSpinner } from "@/components/common";
+import { useLocalStorage, useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -31,34 +32,14 @@ mermaid.initialize({
 });
 
 function App() {
-  const [diagram, setDiagram] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-last-diagram");
-    return saved || "";
-  });
-  const [title, setTitle] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-last-title");
-    return saved || "";
-  });
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-dark-mode");
-    return saved === "true";
-  });
-  const [isEditCollapsed, setIsEditCollapsed] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-edit-collapsed");
-    return saved !== null ? saved === "true" : true; // Default to collapsed on first use
-  });
-  const [editPanelSize, setEditPanelSize] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-edit-panel-size");
-    return saved ? parseFloat(saved) : 30;
-  });
-  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-history-collapsed");
-    return saved !== null ? saved === "true" : false; // Default to expanded
-  });
-  const [historyPanelSize, setHistoryPanelSize] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-history-panel-size");
-    return saved ? parseFloat(saved) : 20;
-  });
+  // LocalStorage-backed state
+  const [diagram, setDiagram] = useLocalStorage("mindpilot-mcp-last-diagram", "");
+  const [title, setTitle] = useLocalStorage("mindpilot-mcp-last-title", "");
+  const [isDarkMode, setIsDarkMode] = useLocalStorageBoolean("mindpilot-mcp-dark-mode", false);
+  const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
+  const [editPanelSize, setEditPanelSize] = useLocalStorageNumber("mindpilot-mcp-edit-panel-size", 30);
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useLocalStorageBoolean("mindpilot-mcp-history-collapsed", false);
+  const [historyPanelSize, setHistoryPanelSize] = useLocalStorageNumber("mindpilot-mcp-history-panel-size", 20);
   const [status, setStatus] = useState("Ready");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -295,24 +276,14 @@ function App() {
     setIsPanning(false);
   };
 
-  // Apply dark mode class to body and save to localStorage
+  // Apply dark mode class to body
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("mindpilot-mcp-dark-mode", isDarkMode.toString());
   }, [isDarkMode]);
-
-  // Save diagram and title to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("mindpilot-mcp-last-diagram", diagram);
-  }, [diagram]);
-
-  useEffect(() => {
-    localStorage.setItem("mindpilot-mcp-last-title", title);
-  }, [title]);
 
   // Handle container resize
   useEffect(() => {
@@ -482,16 +453,13 @@ function App() {
           onResize={(size) => {
             if (size > 0) {
               setHistoryPanelSize(size);
-              localStorage.setItem("mindpilot-mcp-history-panel-size", size.toString());
             }
           }}
           onCollapse={() => {
             setIsHistoryCollapsed(true);
-            localStorage.setItem("mindpilot-mcp-history-collapsed", "true");
           }}
           onExpand={() => {
             setIsHistoryCollapsed(false);
-            localStorage.setItem("mindpilot-mcp-history-collapsed", "false");
           }}
         >
           <HistoryPanel
@@ -578,12 +546,10 @@ function App() {
           onResize={(size) => {
             if (size > 0) {
               setEditPanelSize(size);
-              localStorage.setItem("mindpilot-mcp-edit-panel-size", size.toString());
             }
           }}
           onCollapse={() => {
             setIsEditCollapsed(true);
-            localStorage.setItem("mindpilot-mcp-edit-collapsed", "true");
             // Fit to screen when editor is collapsed
             setTimeout(() => {
               if (!hasManuallyZoomed) {
@@ -595,7 +561,6 @@ function App() {
           }}
           onExpand={() => {
             setIsEditCollapsed(false);
-            localStorage.setItem("mindpilot-mcp-edit-collapsed", "false");
             // Fit to screen when editor is expanded
             setTimeout(() => {
               if (!hasManuallyZoomed) {
