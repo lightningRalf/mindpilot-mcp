@@ -21,6 +21,7 @@ import { HotkeyModal } from "@/components/HotkeyModal";
 import { LoadingSpinner } from "@/components/common";
 import { useLocalStorage, useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
+import { usePanZoom } from "@/hooks/usePanZoom";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -42,19 +43,30 @@ function App() {
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useLocalStorageBoolean("mindpilot-mcp-history-collapsed", false);
   const [historyPanelSize, setHistoryPanelSize] = useLocalStorageNumber("mindpilot-mcp-history-panel-size", 20);
   const [status, setStatus] = useState("Ready");
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [startPan, setStartPan] = useState({ x: 0, y: 0 });
-  const [hasManuallyZoomed, setHasManuallyZoomed] = useState(false);
-  const [isZooming, setIsZooming] = useState(false);
   const [showHotkeyModal, setShowHotkeyModal] = useState(false);
   const [isLoadingDiagram, setIsLoadingDiagram] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
   const historyPanelRef = useRef<any>(null);
-  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Use the pan/zoom hook
+  const {
+    zoom,
+    pan,
+    isPanning,
+    isZooming,
+    hasManuallyZoomed,
+    handleZoomIn,
+    handleZoomOut,
+    handleZoomReset,
+    handleFitToScreen,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleMouseLeave,
+    setHasManuallyZoomed,
+  } = usePanZoom(containerRef, previewRef);
 
   // WebSocket connection setup - memoize to prevent re-calculation
   const wsUrl = useMemo(() => {
@@ -90,13 +102,9 @@ function App() {
           setTitle(data.title);
         }
         setStatus("Rendered successfully (via broadcast)");
-
-        // Reset view to fit new diagram
-        setHasManuallyZoomed(false);
-        // Small delay to allow diagram to render before fitting
-        setTimeout(() => {
-          handleFitToScreen(true);
-        }, 100);
+        
+        // Don't reset hasManuallyZoomed here - let the diagram render first
+        // The useEffect for diagram rendering will handle the reset and fit
       } else if (data.type === "visibility_query") {
         // Server is asking if we're visible
         const isVisible = !document.hidden;
@@ -121,15 +129,6 @@ function App() {
     }
   })();
 
-  // Cleanup zoom timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current);
-        zoomTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
 
   // Render diagram
@@ -169,9 +168,12 @@ function App() {
         const { svg } = await mermaid.render(id, diagram);
         previewRef.current!.innerHTML = svg;
 
-        // Reset pan when diagram changes and reset manual zoom flag
-        setPan({ x: 0, y: 0 });
+        // Reset manual zoom flag and fit to screen after rendering
         setHasManuallyZoomed(false);
+        // Small delay to ensure SVG is fully rendered
+        setTimeout(() => {
+          handleFitToScreen(true);
+        }, 50);
 
         setStatus("Rendered successfully");
       } catch (error: any) {
@@ -190,92 +192,12 @@ function App() {
     setDiagram(diagramText);
     setTitle(diagramTitle);
     setStatus("Loaded from history");
-
-    // Reset view to fit new diagram
-    setHasManuallyZoomed(false);
-    setTimeout(() => {
-      handleFitToScreen(true);
-    }, 100);
+    
+    // Don't reset hasManuallyZoomed here - let the diagram render first
+    // The useEffect for diagram rendering will handle the reset
   };
 
 
-  // Zoom handlers
-  const handleZoomIn = () => {
-    setZoom((prev) => Math.min(prev * 1.2, 5));
-    setHasManuallyZoomed(true);
-  };
-
-  const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev / 1.2, 0.1));
-    setHasManuallyZoomed(true);
-  };
-
-  const handleZoomReset = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-    setHasManuallyZoomed(true);
-  };
-
-  const handleFitToScreen = (isAutoResize = false) => {
-    const svgElement = previewRef.current?.querySelector("svg");
-    const container = containerRef.current;
-
-    if (svgElement && container) {
-      // Get SVG's natural dimensions from viewBox or width/height attributes
-      let svgWidth =
-        svgElement.viewBox.baseVal.width || svgElement.width.baseVal.value;
-      let svgHeight =
-        svgElement.viewBox.baseVal.height || svgElement.height.baseVal.value;
-
-      // If no viewBox, try to get from the rendered size
-      if (!svgWidth || !svgHeight) {
-        const bbox = svgElement.getBBox();
-        svgWidth = bbox.width;
-        svgHeight = bbox.height;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-
-      // Calculate scale to fit within container with padding
-      const padding = 40;
-      const scaleX = (containerRect.width - padding * 2) / svgWidth;
-      const scaleY = (containerRect.height - padding * 2) / svgHeight;
-      const fitScale = Math.min(scaleX, scaleY);
-
-      // Apply the scale if valid
-      if (fitScale > 0 && isFinite(fitScale)) {
-        setZoom(fitScale);
-        setPan({ x: 0, y: 0 });
-        // Mark as manual zoom if triggered by button click
-        if (!isAutoResize) {
-          setHasManuallyZoomed(true);
-        }
-      }
-    }
-  };
-
-  // Mouse handlers for panning
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      // Left click
-      setIsPanning(true);
-      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-      e.preventDefault();
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isPanning) {
-      setPan({
-        x: e.clientX - startPan.x,
-        y: e.clientY - startPan.y,
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsPanning(false);
-  };
 
   // Apply dark mode class to body
   useEffect(() => {
@@ -374,63 +296,6 @@ function App() {
   useKeyboardShortcuts(shortcuts);
   usePreventBrowserZoom();
 
-  // Attach wheel handler to preview container with passive: false
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleContainerWheel = (e: WheelEvent) => {
-      e.preventDefault();
-
-      // Set zooming state to disable transitions
-      setIsZooming(true);
-
-      // Clear existing timeout
-      if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current);
-      }
-
-      // Reset zooming state after wheel events stop
-      zoomTimeoutRef.current = setTimeout(() => {
-        setIsZooming(false);
-      }, 150);
-
-      // More natural zoom with logarithmic scaling
-      // Detect if using trackpad (smaller delta values) vs mouse wheel (larger, discrete values)
-      const isTrackpad = Math.abs(e.deltaY) < 50;
-      const zoomSensitivity = isTrackpad ? 0.01 : 0.02; // Balanced sensitivity
-
-      const deltaY = e.deltaY;
-
-      // Apply logarithmic scaling for more natural feel
-      const zoomFactor = Math.exp(-deltaY * zoomSensitivity);
-      const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.1), 5);
-
-      // Zoom towards mouse position
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      // Calculate the point in diagram space (before zoom)
-      const pointX = (x - rect.width / 2 - pan.x) / zoom;
-      const pointY = (y - rect.height / 2 - pan.y) / zoom;
-
-      // Calculate new pan to keep the same point under the mouse
-      setPan({
-        x: x - rect.width / 2 - pointX * newZoom,
-        y: y - rect.height / 2 - pointY * newZoom,
-      });
-
-      setZoom(newZoom);
-      setHasManuallyZoomed(true);
-    };
-
-    container.addEventListener('wheel', handleContainerWheel, { passive: false });
-
-    return () => {
-      container.removeEventListener('wheel', handleContainerWheel);
-    };
-  }, [zoom, pan]);
 
   return (
     <div
@@ -502,7 +367,7 @@ function App() {
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
               style={{ cursor: isPanning ? "grabbing" : "grab" }}
             >
               {isLoadingDiagram && (
