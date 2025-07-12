@@ -14,7 +14,7 @@ import {
 import mermaid from "mermaid";
 import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus";
 import { ZoomControls } from "@/components/ZoomControls";
-import { useWebSocketStateMachine } from "@/hooks/useWebSocketStateMachine";
+import { useMcpServerWebSocket } from "@/hooks/useMcpServerWebSocket";
 import { MermaidEditor } from "@/components/MermaidEditor";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { HotkeyModal } from "@/components/HotkeyModal";
@@ -68,66 +68,16 @@ function App() {
     setHasManuallyZoomed,
   } = usePanZoom(containerRef, previewRef);
 
-  // WebSocket connection setup - memoize to prevent re-calculation
-  const wsUrl = useMemo(() => {
-    const currentPort = window.location.port;
-    const isDev = currentPort === "5173";
-
-    // In dev mode, always connect to port 4000 (MCP server)
-    // In production, use the same port as the page
-    const url = isDev
-      ? `ws://${window.location.hostname}:4000/ws`
-      : `ws://${window.location.hostname}:${window.location.port}/ws`;
-
-    console.log('[WebSocket Setup]', {
-      isDev,
-      currentPort,
-      hostname: window.location.hostname,
-      wsUrl: url,
-      fullUrl: window.location.href,
-      note: isDev ? 'Dev mode - connecting to MCP server on port 4000' : 'Production mode - using same port'
-    });
-
-    return url;
-  }, []); // Empty deps - URL shouldn't change during the session
-
-  const { state, reconnect, send } = useWebSocketStateMachine({
-    url: wsUrl,
-    onMessage: (data) => {
-      console.log('[WebSocket Message]', data);
-      if (data.type === "render_result" && data.diagram) {
-        console.log("Updating diagram from WebSocket broadcast");
-        setDiagram(data.diagram);
-        if (data.title) {
-          setTitle(data.title);
-        }
-        setStatus("Rendered successfully (via broadcast)");
-        
-        // Don't reset hasManuallyZoomed here - let the diagram render first
-        // The useEffect for diagram rendering will handle the reset and fit
-      } else if (data.type === "visibility_query") {
-        // Server is asking if we're visible
-        const isVisible = !document.hidden;
-        console.log('[Visibility Query] Responding with:', { isVisible, hidden: document.hidden });
-        send({
-          type: "visibility_response",
-          isVisible
-        });
+  // WebSocket connection to MCP server
+  const { connectionStatus, reconnect } = useMcpServerWebSocket({
+    onDiagramUpdate: (update) => {
+      setDiagram(update.diagram);
+      if (update.title) {
+        setTitle(update.title);
       }
     },
+    onStatusUpdate: setStatus,
   });
-
-  // Map state machine states to UI status messages
-  const connectionStatus = (() => {
-    switch (state) {
-      case 'connected': return 'Connected';
-      case 'connecting': return 'Connecting...';
-      case 'reconnecting': return 'Reconnecting...';
-      case 'failed': return 'Disconnected';
-      case 'disconnected': return 'Disconnected';
-      default: return 'Disconnected';
-    }
-  })();
 
 
 
