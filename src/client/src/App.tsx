@@ -20,6 +20,7 @@ import { HistoryPanel } from "@/components/HistoryPanel";
 import { HotkeyModal } from "@/components/HotkeyModal";
 import { LoadingSpinner } from "@/components/common";
 import { useLocalStorage, useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
+import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -309,75 +310,69 @@ function App() {
     };
   }, [hasManuallyZoomed]); // Re-setup when manual zoom state changes
 
-  // Keyboard shortcuts and prevent browser zoom
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle history panel with Cmd/Ctrl + B
-      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
-        e.preventDefault();
+  // Keyboard shortcuts
+  const shortcuts = useMemo<KeyboardShortcut[]>(() => [
+    {
+      key: 'b',
+      ctrl: true,
+      description: 'Toggle history panel',
+      handler: () => {
         if (isHistoryCollapsed) {
           historyPanelRef.current?.expand();
         } else {
           historyPanelRef.current?.collapse();
         }
       }
-
-      // Toggle edit panel with Cmd/Ctrl + E
-      if ((e.metaKey || e.ctrlKey) && e.key === "e") {
-        e.preventDefault();
+    },
+    {
+      key: 'e',
+      ctrl: true,
+      description: 'Toggle edit panel',
+      handler: () => {
         if (isEditCollapsed) {
           editPanelRef.current?.expand();
         } else {
           editPanelRef.current?.collapse();
         }
       }
+    },
+    {
+      key: '?',
+      description: 'Show keyboard shortcuts',
+      handler: () => setShowHotkeyModal(prev => !prev)
+    },
+    {
+      key: '+',
+      ctrl: true,
+      description: 'Zoom in',
+      ignoreInputElements: true,
+      handler: () => handleZoomIn()
+    },
+    {
+      key: '=',
+      ctrl: true,
+      description: 'Zoom in',
+      ignoreInputElements: true,
+      handler: () => handleZoomIn()
+    },
+    {
+      key: '-',
+      ctrl: true,
+      description: 'Zoom out',
+      ignoreInputElements: true,
+      handler: () => handleZoomOut()
+    },
+    {
+      key: '0',
+      ctrl: true,
+      description: 'Reset zoom',
+      ignoreInputElements: true,
+      handler: () => handleZoomReset()
+    }
+  ], [isHistoryCollapsed, isEditCollapsed]);
 
-      // Toggle hotkey modal with ?
-      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        setShowHotkeyModal(prev => !prev);
-      }
-
-      // Prevent browser zoom
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")
-      ) {
-        e.preventDefault();
-
-        // Only handle our zoom if not in textarea
-        if (!(e.target instanceof HTMLTextAreaElement)) {
-          switch (e.key) {
-            case "+":
-            case "=":
-              handleZoomIn();
-              break;
-            case "-":
-              handleZoomOut();
-              break;
-            case "0":
-              handleZoomReset();
-              break;
-          }
-        }
-      }
-    };
-
-    // Prevent browser zoom via mouse wheel
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("wheel", handleWheel, { passive: false });
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("wheel", handleWheel);
-    };
-  }, [isHistoryCollapsed, isEditCollapsed, showHotkeyModal]);
+  useKeyboardShortcuts(shortcuts);
+  usePreventBrowserZoom();
 
   // Attach wheel handler to preview container with passive: false
   useEffect(() => {

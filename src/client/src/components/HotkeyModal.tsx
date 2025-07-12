@@ -45,7 +45,7 @@ export const HotkeyModal: React.FC<HotkeyModalProps> = ({ isOpen, onClose, isDar
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-2xl ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white'}`}>
+      <DialogContent className={`max-w-2xl ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white'} [&>button]:!ring-0 [&>button]:!ring-offset-0 [&>button]:!outline-none`}>
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Keyboard Shortcuts</DialogTitle>
           <DialogDescription className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
