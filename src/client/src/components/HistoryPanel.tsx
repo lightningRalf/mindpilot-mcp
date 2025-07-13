@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { SearchBar, DiagramList } from './history';
 import { MCPServerStatus } from './connection';
-import { useDiagramHistory, useExportDiagram, useAnalytics } from '@/hooks';
+import { ModeSelector, CloudModeModal } from '@/components/common';
+import { useDiagramHistory, useExportDiagram, useAnalytics, useLocalStorage } from '@/hooks';
 
 export interface HistoryPanelProps {
   onSelectDiagram: (diagramId: string) => void;
@@ -27,6 +28,8 @@ export function HistoryPanel({
   const [organizeByDate, setOrganizeByDate] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [currentMode, setCurrentMode] = useLocalStorage<'local' | 'cloud'>('mindpilot-mcp-mode', 'local');
+  const [showCloudModal, setShowCloudModal] = useState(false);
 
   // Use the history hook
   const {
@@ -53,11 +56,24 @@ export function HistoryPanel({
   // Use analytics
   const { trackDiagramSelected, trackDiagramExported, trackDiagramDeleted } = useAnalytics();
 
+  const handleModeChange = (mode: 'local' | 'cloud') => {
+    if (mode === 'cloud') {
+      setShowCloudModal(true);
+      // Don't actually change the mode to cloud
+    } else {
+      setCurrentMode(mode);
+    }
+  };
+
   return (
     <div className={`h-full flex flex-col ${isDarkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white text-neutral-800'}`}>
       {/* Header */}
       <div className={`font-medium relative px-4 py-6 border-b ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-neutral-50 border-neutral-200 text-neutral-800'} flex items-center justify-center`}>
-        <span>Mindpilot MCP</span>
+        <ModeSelector 
+          isDarkMode={isDarkMode}
+          currentMode={currentMode}
+          onModeChange={handleModeChange}
+        />
       </div>
 
       {/* Thin Banner with Saved Diagrams and Toggle */}
@@ -148,6 +164,13 @@ export function HistoryPanel({
           isCollapsedView={false}
         />
       </div>
+
+      {/* Cloud Mode Modal */}
+      <CloudModeModal 
+        isOpen={showCloudModal}
+        onClose={() => setShowCloudModal(false)}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 }
