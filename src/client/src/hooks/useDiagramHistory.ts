@@ -13,19 +13,22 @@ export interface UseDiagramHistoryOptions {
   isExpanded?: boolean;
   searchQuery: string;
   organizeByDate: boolean;
+  currentDiagramId?: string | null;
+  onCurrentDiagramTitleChange?: (newTitle: string) => void;
+  refreshTrigger?: number;
 }
 
-export function useDiagramHistory({ isExpanded = true, searchQuery, organizeByDate }: UseDiagramHistoryOptions) {
+export function useDiagramHistory({ isExpanded = true, searchQuery, organizeByDate, currentDiagramId, onCurrentDiagramTitleChange, refreshTrigger }: UseDiagramHistoryOptions) {
   const [history, setHistory] = useState<DiagramHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set(['Today']));
 
-  // Fetch history when expanded
+  // Fetch history when expanded or refresh trigger changes
   useEffect(() => {
     if (isExpanded) {
       fetchHistory();
     }
-  }, [isExpanded]);
+  }, [isExpanded, refreshTrigger]);
 
   const fetchHistory = async () => {
     try {
@@ -63,6 +66,41 @@ export function useDiagramHistory({ isExpanded = true, searchQuery, organizeByDa
     } catch (error) {
       console.error('Failed to delete diagram:', error);
       alert('Failed to delete diagram');
+    }
+  };
+
+  // Rename diagram
+  const renameDiagram = async (entry: DiagramHistoryEntry, newTitle: string) => {
+    if (!newTitle.trim() || newTitle === entry.title) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/history/${entry.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: newTitle.trim() }),
+      });
+      
+      if (response.ok) {
+        setHistory(prev => prev.map(h => 
+          h.id === entry.id ? { ...h, title: newTitle.trim() } : h
+        ));
+        
+        // If this is the currently active diagram, update the diagram context too
+        if (currentDiagramId === entry.id && onCurrentDiagramTitleChange) {
+          onCurrentDiagramTitleChange(newTitle.trim());
+        }
+      } else {
+        const errorData = await response.text();
+        console.error('Rename failed:', response.status, errorData);
+        alert(`Failed to rename diagram: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to rename diagram:', error);
+      alert('Failed to rename diagram');
     }
   };
 
@@ -224,6 +262,7 @@ export function useDiagramHistory({ isExpanded = true, searchQuery, organizeByDa
     formatDate,
     toggleCollection,
     deleteDiagram,
+    renameDiagram,
     refetchHistory: fetchHistory,
   };
 }

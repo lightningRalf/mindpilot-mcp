@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { SearchBar, DiagramList } from './history';
 import { MCPServerStatus } from './connection';
 import { useDiagramHistory, useExportDiagram, useAnalytics } from '@/hooks';
@@ -10,6 +10,8 @@ export interface HistoryPanelProps {
   currentDiagramId?: string | null;
   connectionStatus: string;
   onReconnect: () => void;
+  onCurrentDiagramTitleChange?: (newTitle: string) => void;
+  refreshTrigger?: number;
 }
 
 export function HistoryPanel({
@@ -18,7 +20,9 @@ export function HistoryPanel({
   isExpanded = true,
   currentDiagramId,
   connectionStatus,
-  onReconnect
+  onReconnect,
+  onCurrentDiagramTitleChange,
+  refreshTrigger
 }: HistoryPanelProps) {
   const [organizeByDate, setOrganizeByDate] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,7 +30,6 @@ export function HistoryPanel({
 
   // Use the history hook
   const {
-    history,
     totalDiagrams,
     loading,
     expandedCollections,
@@ -34,7 +37,15 @@ export function HistoryPanel({
     formatDate,
     toggleCollection,
     deleteDiagram,
-  } = useDiagramHistory({ isExpanded, searchQuery, organizeByDate });
+    renameDiagram,
+  } = useDiagramHistory({ 
+    isExpanded, 
+    searchQuery, 
+    organizeByDate, 
+    currentDiagramId, 
+    onCurrentDiagramTitleChange,
+    refreshTrigger
+  });
 
   // Use the export hook
   const { exportAsPng } = useExportDiagram({ isDarkMode });
@@ -120,6 +131,7 @@ export function HistoryPanel({
             deleteDiagram(entry);
             trackDiagramDeleted();
           }}
+          onRenameDiagram={renameDiagram}
           setOpenDropdownId={setOpenDropdownId}
           onClearSearch={() => setSearchQuery('')}
         />

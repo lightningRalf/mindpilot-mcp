@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, RefObject, MouseEvent, WheelEvent as ReactWheelEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, RefObject, MouseEvent } from 'react';
 
 export interface PanZoomOptions {
   minZoom?: number;

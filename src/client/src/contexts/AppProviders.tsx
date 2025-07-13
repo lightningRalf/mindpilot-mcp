@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { DiagramProvider, useDiagramContext } from './DiagramContext';
 import { WebSocketProvider } from './WebSocketContext';
 import { ThemeProvider } from './ThemeContext';

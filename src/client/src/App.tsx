@@ -14,7 +14,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 
 export function App() {
   // Get state from contexts
-  const { diagram, setDiagram, setTitle, setCollection, setCurrentDiagramId, setStatus, title, collection, currentDiagramId, status, loadDiagramById } = useDiagramContext();
+  const { diagram, setDiagram, setTitle, title, collection, currentDiagramId, loadDiagramById } = useDiagramContext();
   const { connectionStatus, reconnect } = useWebSocketContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
@@ -55,6 +55,32 @@ export function App() {
   const handleSelectDiagram = useCallback((diagramId: string) => {
     loadDiagramById(diagramId);
   }, [loadDiagramById]);
+
+  // Shared state for forcing history refresh
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+
+  // Handle title change from diagram title component
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    setTitle(newTitle);
+    
+    // If we have a current diagram ID, also save to server
+    if (currentDiagramId) {
+      try {
+        await fetch(`/api/history/${currentDiagramId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ title: newTitle }),
+        });
+        
+        // Trigger history refresh to update the history panel
+        setHistoryRefreshTrigger(prev => prev + 1);
+      } catch (error) {
+        console.error('Failed to update diagram title:', error);
+      }
+    }
+  }, [setTitle, currentDiagramId]);
 
 
 
@@ -141,13 +167,21 @@ export function App() {
       currentDiagramId={currentDiagramId}
       connectionStatus={connectionStatus}
       onReconnect={reconnect}
+      onCurrentDiagramTitleChange={setTitle}
+      refreshTrigger={historyRefreshTrigger}
     />
   );
 
   // Center panel content
   const centerContent = (
     <div className={`h-full flex flex-col relative ${isDarkMode ? "bg-neutral-800" : "bg-neutral-100"}`}>
-      <DiagramTitle title={title} collection={collection} isDarkMode={isDarkMode} />
+      <DiagramTitle 
+        title={title} 
+        collection={collection} 
+        isDarkMode={isDarkMode} 
+        isEditable={true}
+        onTitleChange={handleTitleChange}
+      />
 
       <ZoomControls
         zoom={zoom}

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { useLocalStorageString } from '@/hooks/useLocalStorage';
 
 export interface DiagramContextValue {

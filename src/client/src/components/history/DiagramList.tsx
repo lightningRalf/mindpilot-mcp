@@ -18,6 +18,7 @@ export interface DiagramListProps {
   onSelectDiagram: (entry: DiagramHistoryEntry) => void;
   onDownloadDiagram: (entry: DiagramHistoryEntry) => void;
   onDeleteDiagram: (entry: DiagramHistoryEntry) => void;
+  onRenameDiagram: (entry: DiagramHistoryEntry, newTitle: string) => void;
   setOpenDropdownId: (id: string | null) => void;
   onClearSearch: () => void;
 }
@@ -37,6 +38,7 @@ export function DiagramList({
   onSelectDiagram,
   onDownloadDiagram,
   onDeleteDiagram,
+  onRenameDiagram,
   setOpenDropdownId,
   onClearSearch,
 }: DiagramListProps) {
@@ -103,6 +105,7 @@ export function DiagramList({
                   onSelect={onSelectDiagram}
                   onDownload={onDownloadDiagram}
                   onDelete={onDeleteDiagram}
+                  onRename={onRenameDiagram}
                   openDropdownId={openDropdownId}
                   setOpenDropdownId={setOpenDropdownId}
                 />

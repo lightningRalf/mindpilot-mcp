@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 import { useMcpServerWebSocket } from '@/hooks/useMcpServerWebSocket';
 
 export interface WebSocketContextValue {

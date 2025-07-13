@@ -9,7 +9,6 @@ import {
   Pencil,
   PanelLeft,
   PanelLeftClose,
-  PanelRightClose,
 } from "lucide-react";
 import { useThemeContext } from '@/contexts';
 

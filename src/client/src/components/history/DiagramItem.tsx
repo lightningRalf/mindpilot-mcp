@@ -1,10 +1,12 @@
-import { MoreVertical, Download, Trash2 } from 'lucide-react';
+import { MoreVertical, Download, Trash2, Edit } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { InlineEdit, InlineEditRef } from '@/components/ui/InlineEdit';
+import { useRef } from 'react';
 
 export interface DiagramHistoryEntry {
   id: string;
@@ -23,6 +25,7 @@ export interface DiagramItemProps {
   onSelect: (entry: DiagramHistoryEntry) => void;
   onDownload: (entry: DiagramHistoryEntry) => void;
   onDelete: (entry: DiagramHistoryEntry) => void;
+  onRename: (entry: DiagramHistoryEntry, newTitle: string) => void;
   openDropdownId: string | null;
   setOpenDropdownId: (id: string | null) => void;
 }
@@ -35,9 +38,17 @@ export function DiagramItem({
   onSelect,
   onDownload,
   onDelete,
+  onRename,
   openDropdownId,
   setOpenDropdownId,
 }: DiagramItemProps) {
+  const inlineEditRef = useRef<InlineEditRef>(null);
+
+  const handleRename = () => {
+    inlineEditRef.current?.startEditing();
+    setOpenDropdownId(null);
+  };
+
   return (
     <button
       key={entry.id}
@@ -54,13 +65,19 @@ export function DiagramItem({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <h4 className={`text-sm font-medium truncate ${
-            isActive
-              ? isDarkMode ? 'text-orange-300' : 'text-orange-700'
-              : isDarkMode ? 'text-neutral-200' : 'text-neutral-900'
-          }`}>
-            {entry.title}
-          </h4>
+          <InlineEdit
+            ref={inlineEditRef}
+            value={entry.title}
+            onSave={(newTitle) => onRename(entry, newTitle)}
+            className={`text-sm font-medium text-left truncate ${
+              isActive
+                ? isDarkMode ? 'text-orange-300' : 'text-orange-700'
+                : isDarkMode ? 'text-neutral-200' : 'text-neutral-900'
+            }`}
+            editClassName={`w-full px-1 rounded ${isDarkMode ? "bg-neutral-700 ring-1 ring-orange-500/50" : "bg-white ring-1 ring-orange-400/50"}`}
+            placeholder="Untitled"
+            requireDoubleClick={true}
+          />
           <p className={`text-xs ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
             {formatDate(entry.lastEdited)}
           </p>
@@ -77,13 +94,36 @@ export function DiagramItem({
                 <MoreVertical className="h-4 w-4" />
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent 
+              align="end"
+              className={isDarkMode 
+                ? "bg-neutral-800 border-neutral-700 text-neutral-100" 
+                : "bg-white border-neutral-200 text-neutral-900"
+              }
+            >
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRename();
+                }}
+                className={isDarkMode 
+                  ? "hover:bg-neutral-700 focus:bg-neutral-700" 
+                  : "hover:bg-neutral-100 focus:bg-neutral-100"
+                }
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Rename
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
                   onDownload(entry);
                   setOpenDropdownId(null);
                 }}
+                className={isDarkMode 
+                  ? "hover:bg-neutral-700 focus:bg-neutral-700" 
+                  : "hover:bg-neutral-100 focus:bg-neutral-100"
+                }
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download as PNG
@@ -94,7 +134,10 @@ export function DiagramItem({
                   onDelete(entry);
                   setOpenDropdownId(null);
                 }}
-                className="text-red-600 focus:text-red-600"
+                className={isDarkMode 
+                  ? "text-red-400 hover:bg-red-900/20 focus:bg-red-900/20 hover:text-red-300 focus:text-red-300" 
+                  : "text-red-600 hover:bg-red-50 focus:bg-red-50 hover:text-red-700 focus:text-red-700"
+                }
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete

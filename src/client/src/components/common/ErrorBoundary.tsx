@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error to console in development
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     // Call optional error handler
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
@@ -46,10 +46,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <div className="min-h-[200px] flex items-center justify-center p-4">
           <EmptyState
             icon={AlertCircle}
-            title="Something went wrong"
+            title="Component Error"
             description={
-              process.env.NODE_ENV === 'development' 
-                ? this.state.error?.message 
+              process.env.NODE_ENV === 'development'
+                ? this.state.error?.message
                 : "An unexpected error occurred. Please try refreshing the page."
             }
             action={{

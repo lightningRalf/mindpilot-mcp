@@ -154,6 +154,43 @@ export class HistoryService {
   }
 
   /**
+   * Updates a diagram's properties (title, collection, etc.)
+   */
+  async updateDiagram(diagramId: string, updates: Partial<Pick<DiagramHistoryEntry, 'title' | 'collection' | 'diagram'>>): Promise<void> {
+    const filePath = path.join(this.dataDir, `${diagramId}.json`);
+    
+    try {
+      // Read the raw file content directly
+      const content = await fs.readFile(filePath, 'utf-8');
+      const rawEntry = JSON.parse(content);
+      
+      // Update the specified fields
+      if (updates.title !== undefined) {
+        rawEntry.title = updates.title;
+      }
+      if (updates.collection !== undefined) {
+        rawEntry.collection = updates.collection;
+      }
+      if (updates.diagram !== undefined) {
+        rawEntry.diagram = updates.diagram;
+      }
+      
+      // Update lastEdited timestamp
+      rawEntry.lastEdited = new Date().toISOString();
+      
+      // Write back the updated entry
+      await fs.writeFile(filePath, JSON.stringify(rawEntry, null, 2));
+      
+      logger.info(`Updated diagram ${diagramId}:`, updates);
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        throw new Error(`Diagram ${diagramId} not found`);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Deletes a diagram by ID
    */
   async deleteDiagram(diagramId: string): Promise<void> {

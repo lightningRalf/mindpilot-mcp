@@ -1,4 +1,4 @@
-import { useRef, ReactNode, forwardRef } from 'react';
+import { ReactNode, forwardRef } from 'react';
 import { LoadingSpinner } from '@/components/common';
 import { useDiagramContext } from '@/contexts';
 
@@ -57,45 +57,3 @@ export const PanZoomContainer = forwardRef<HTMLDivElement, PanZoomContainerProps
     );
   }
 );
-
-// Hook that combines container ref with pan/zoom functionality
-export function usePanZoomContainer() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-  
-  const {
-    zoom,
-    pan,
-    isPanning,
-    isZooming,
-    hasManuallyZoomed,
-    handleZoomIn,
-    handleZoomOut,
-    handleZoomReset,
-    handleFitToScreen,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handleMouseLeave,
-    setHasManuallyZoomed,
-  } = usePanZoom(containerRef, previewRef);
-
-  return {
-    containerRef,
-    previewRef,
-    zoom,
-    pan,
-    isPanning,
-    isZooming,
-    hasManuallyZoomed,
-    handleZoomIn,
-    handleZoomOut,
-    handleZoomReset,
-    handleFitToScreen,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handleMouseLeave,
-    setHasManuallyZoomed,
-  };
-}

@@ -270,6 +270,23 @@ export class SingletonHTTPServer {
       },
     );
 
+    this.fastify.patch(
+      "/api/history/:id",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { id } = request.params as any;
+          const updates = request.body as any;
+          logger.info(`Updating diagram with id: ${id}`, updates);
+          await historyService.updateDiagram(id, updates);
+          logger.info(`Successfully updated diagram: ${id}`);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to update diagram", { error, id: (request.params as any).id });
+          return reply.code(500).send({ error: "Failed to update diagram" });
+        }
+      },
+    );
+
     this.fastify.delete(
       "/api/history/:id",
       async (request: FastifyRequest, reply: FastifyReply) => {
