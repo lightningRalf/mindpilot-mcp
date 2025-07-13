@@ -80,3 +80,14 @@ export function useLocalStorageNumber(
     deserialize: (value) => parseFloat(value)
   });
 }
+
+// Specialized version for nullable string values (like IDs)
+export function useLocalStorageString(
+  key: string,
+  defaultValue: string | null = null
+): [string | null, (value: SetValue<string | null>) => void] {
+  return useLocalStorage(key, defaultValue, {
+    serialize: (value) => value === null ? 'null' : value,
+    deserialize: (value) => value === 'null' ? null : value
+  });
+}

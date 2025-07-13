@@ -20,7 +20,7 @@ export interface DiagramItemProps {
   isActive: boolean;
   isDarkMode: boolean;
   formatDate: (dateString: string) => string;
-  onSelect: (diagram: string, title: string, collection?: string | null) => void;
+  onSelect: (entry: DiagramHistoryEntry) => void;
   onDownload: (entry: DiagramHistoryEntry) => void;
   onDelete: (entry: DiagramHistoryEntry) => void;
   openDropdownId: string | null;
@@ -41,7 +41,7 @@ export function DiagramItem({
   return (
     <button
       key={entry.id}
-      onClick={() => onSelect(entry.diagram, entry.title, entry.collection)}
+      onClick={() => onSelect(entry)}
       className={`w-full text-left p-2 rounded transition-colors border-l-2 group ${
         isActive
           ? isDarkMode
@@ -67,13 +67,15 @@ export function DiagramItem({
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <DropdownMenu open={openDropdownId === entry.id} onOpenChange={(open) => setOpenDropdownId(open ? entry.id : null)}>
-            <DropdownMenuTrigger
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-              className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors`}
-            >
-              <MoreVertical className="h-4 w-4" />
+            <DropdownMenuTrigger asChild>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors cursor-pointer`}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem

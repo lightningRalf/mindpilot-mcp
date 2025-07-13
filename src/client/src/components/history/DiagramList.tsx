@@ -7,7 +7,7 @@ export interface DiagramListProps {
   groupedData: [string, DiagramHistoryEntry[]][];
   organizeByDate: boolean;
   isDarkMode: boolean;
-  currentDiagram?: string;
+  currentDiagramId?: string | null;
   searchQuery: string;
   loading: boolean;
   totalDiagrams: number;
@@ -15,7 +15,7 @@ export interface DiagramListProps {
   openDropdownId: string | null;
   formatDate: (dateString: string) => string;
   onToggleCollection: (collection: string) => void;
-  onSelectDiagram: (diagram: string, title: string, collection?: string | null) => void;
+  onSelectDiagram: (entry: DiagramHistoryEntry) => void;
   onDownloadDiagram: (entry: DiagramHistoryEntry) => void;
   onDeleteDiagram: (entry: DiagramHistoryEntry) => void;
   setOpenDropdownId: (id: string | null) => void;
@@ -26,7 +26,7 @@ export function DiagramList({
   groupedData,
   organizeByDate,
   isDarkMode,
-  currentDiagram,
+  currentDiagramId,
   searchQuery,
   loading,
   totalDiagrams,
@@ -97,7 +97,7 @@ export function DiagramList({
                 <DiagramItem
                   key={entry.id}
                   entry={entry}
-                  isActive={currentDiagram === entry.diagram}
+                  isActive={currentDiagramId === entry.id}
                   isDarkMode={isDarkMode}
                   formatDate={formatDate}
                   onSelect={onSelectDiagram}

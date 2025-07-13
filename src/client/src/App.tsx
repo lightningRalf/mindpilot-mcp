@@ -14,7 +14,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 
 export function App() {
   // Get state from contexts
-  const { diagram, setDiagram, setTitle, setCollection, setStatus, title, collection, status } = useDiagramContext();
+  const { diagram, setDiagram, setTitle, setCollection, setCurrentDiagramId, setStatus, title, collection, currentDiagramId, status, loadDiagramById } = useDiagramContext();
   const { connectionStatus, reconnect } = useWebSocketContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
@@ -52,12 +52,9 @@ export function App() {
 
 
 
-  const handleSelectDiagram = useCallback((diagramText: string, diagramTitle: string, diagramCollection?: string | null) => {
-    setDiagram(diagramText);
-    setTitle(diagramTitle);
-    setCollection(diagramCollection || null);
-    setStatus("Loaded from history");
-  }, [setDiagram, setTitle, setCollection, setStatus]);
+  const handleSelectDiagram = useCallback((diagramId: string) => {
+    loadDiagramById(diagramId);
+  }, [loadDiagramById]);
 
 
 
@@ -141,7 +138,7 @@ export function App() {
       onSelectDiagram={handleSelectDiagram}
       isDarkMode={isDarkMode}
       isExpanded={!isHistoryCollapsed}
-      currentDiagram={diagram}
+      currentDiagramId={currentDiagramId}
       connectionStatus={connectionStatus}
       onReconnect={reconnect}
     />

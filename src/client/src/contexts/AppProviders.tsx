@@ -10,16 +10,14 @@ interface AppProvidersProps {
 
 // Inner component that has access to DiagramContext
 function WebSocketProviderWithDiagramContext({ children }: { children: ReactNode }) {
-  const { setDiagram, setTitle, setStatus } = useDiagramContext();
+  const { updateDiagram, setStatus } = useDiagramContext();
   const { trackDiagramCreated } = useAnalytics();
 
   return (
     <WebSocketProvider
       onDiagramUpdate={(update) => {
-        setDiagram(update.diagram);
-        if (update.title) {
-          setTitle(update.title);
-        }
+        updateDiagram(update.diagram, update.title);
+        // Note: MCP doesn't send collection info, so it remains unchanged
         // Track diagram created from MCP
         trackDiagramCreated({ source: 'mcp' });
       }}

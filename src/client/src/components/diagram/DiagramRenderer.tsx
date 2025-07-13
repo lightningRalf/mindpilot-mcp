@@ -68,7 +68,7 @@ export const DiagramRenderer = forwardRef<HTMLDivElement, DiagramRendererProps>(
           onFitToScreen?.(true);
         }, 50);
 
-        setStatus("Rendered successfully");
+        setStatus(diagram ? "Rendered successfully" : "Ready");
       } catch (error: any) {
         previewRef.current!.innerHTML = `<div class="text-red-500 p-4">Error: ${error.message}</div>`;
         setStatus("Render error");
@@ -77,7 +77,9 @@ export const DiagramRenderer = forwardRef<HTMLDivElement, DiagramRendererProps>(
       }
     };
 
-    const timeoutId = setTimeout(renderDiagram, 500);
+    // Render immediately if diagram exists (from localStorage), otherwise wait
+    const delay = diagram ? 100 : 500;
+    const timeoutId = setTimeout(renderDiagram, delay);
     return () => clearTimeout(timeoutId);
   }, [diagram, isDarkMode, setStatus, setIsLoadingDiagram, onFitToScreen]);
 

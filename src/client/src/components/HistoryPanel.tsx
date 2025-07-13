@@ -4,10 +4,10 @@ import { MCPServerStatus } from './connection';
 import { useDiagramHistory, useExportDiagram, useAnalytics } from '@/hooks';
 
 export interface HistoryPanelProps {
-  onSelectDiagram: (diagram: string, title: string, collection?: string | null) => void;
+  onSelectDiagram: (diagramId: string) => void;
   isDarkMode: boolean;
   isExpanded?: boolean;
-  currentDiagram?: string;
+  currentDiagramId?: string | null;
   connectionStatus: string;
   onReconnect: () => void;
 }
@@ -16,7 +16,7 @@ export function HistoryPanel({
   onSelectDiagram,
   isDarkMode,
   isExpanded = true,
-  currentDiagram,
+  currentDiagramId,
   connectionStatus,
   onReconnect
 }: HistoryPanelProps) {
@@ -97,7 +97,7 @@ export function HistoryPanel({
           groupedData={groupedHistory}
           organizeByDate={organizeByDate}
           isDarkMode={isDarkMode}
-          currentDiagram={currentDiagram}
+          currentDiagramId={currentDiagramId}
           searchQuery={searchQuery}
           loading={loading}
           totalDiagrams={totalDiagrams}
@@ -105,8 +105,8 @@ export function HistoryPanel({
           openDropdownId={openDropdownId}
           formatDate={formatDate}
           onToggleCollection={toggleCollection}
-          onSelectDiagram={(diagram, title, collection) => {
-            onSelectDiagram(diagram, title, collection);
+          onSelectDiagram={(entry) => {
+            onSelectDiagram(entry.id);
             trackDiagramSelected({ 
               source: 'history', 
               organizedBy: organizeByDate ? 'date' : 'project' 

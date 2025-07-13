@@ -296,10 +296,7 @@ export class SingletonHTTPServer {
           totalBrowsers: self.browserConnections.size,
         });
 
-        // Send last diagram if available to new connections
-        if (self.lastDiagram) {
-          socket.socket.send(JSON.stringify(self.lastDiagram));
-        }
+        // Don't send last diagram on connection - let client use localStorage
 
         // Listen to events on the actual WebSocket, not the stream wrapper
         socket.socket.on("message", async (data) => {
