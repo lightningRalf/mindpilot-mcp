@@ -10,6 +10,7 @@ import { useRef } from 'react';
 
 export interface DiagramHistoryEntry {
   id: string;
+  type: string;
   timestamp: string;
   lastEdited: string;
   diagram: string;

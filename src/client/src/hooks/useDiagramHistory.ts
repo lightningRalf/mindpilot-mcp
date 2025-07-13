@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export interface DiagramHistoryEntry {
   id: string;
+  type: string;
   timestamp: string;
   lastEdited: string;
   diagram: string;

@@ -30,6 +30,7 @@ export class HistoryService {
     const now = new Date();
     const entry: DiagramHistoryEntry = {
       id: uuidv4(),
+      type: 'diagram',
       timestamp: now,
       lastEdited: now,
       diagram,
@@ -62,9 +63,10 @@ export class HistoryService {
           const content = await fs.readFile(path.join(this.dataDir, file), 'utf-8');
           const rawEntry = JSON.parse(content);
           
-          // Handle missing lastEdited field for backward compatibility
+          // Handle missing fields for backward compatibility
           const entry: DiagramHistoryEntry = {
             ...rawEntry,
+            type: rawEntry.type || 'diagram',  // Default to 'diagram' for old files
             timestamp: new Date(rawEntry.timestamp),
             lastEdited: new Date(rawEntry.lastEdited || rawEntry.timestamp)
           };

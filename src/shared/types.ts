@@ -58,6 +58,7 @@ export interface ServerMessage {
 // History types
 export interface DiagramHistoryEntry {
   id: string;
+  type: string;  // Type field for future expansion (diagram, template, shared, etc.)
   timestamp: Date;
   lastEdited: Date;
   diagram: string;
