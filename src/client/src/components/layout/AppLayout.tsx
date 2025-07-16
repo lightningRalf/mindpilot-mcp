@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import {
   Pencil,
   PanelLeft,
-  PanelLeftClose,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useThemeContext } from '@/contexts';
 
@@ -128,10 +129,7 @@ export function AppLayout({
             {isHistoryCollapsed ? (
               <PanelLeft className="h-4 w-4" />
             ) : (
-              <>
-                <PanelLeft className="h-4 w-4 group-hover:hidden" />
-                <PanelLeftClose className="h-4 w-4 hidden group-hover:block" />
-              </>
+              <ChevronLeft className="h-4 w-4" />
             )}
           </Button>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Pencil, PanelRightClose } from "lucide-react";
+import { Pencil, ChevronRight } from "lucide-react";
 import { useDiagramContext, useWebSocketContext, useThemeContext } from "@/contexts";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { FloatingConnectionStatus } from "@/components/connection";
@@ -225,8 +225,7 @@ export function App() {
           className="h-8 w-8 group"
           title="Hide editor (⌘E)"
         >
-          <Pencil className="h-4 w-4 group-hover:hidden" />
-          <PanelRightClose className="h-4 w-4 hidden group-hover:block" />
+          <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
       {/* Header */}

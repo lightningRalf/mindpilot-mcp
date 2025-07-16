@@ -60,7 +60,7 @@ export function DiagramItem({
             ? 'bg-orange-500/20 border-orange-500'
             : 'bg-orange-100 border-orange-500'
           : isDarkMode
-            ? 'hover:bg-orange-500/10 active:bg-orange-500/20 border-transparent'
+            ? 'hover:bg-orange-500/5 active:bg-orange-500/10 border-transparent'
             : 'hover:bg-orange-50 active:bg-orange-100 border-transparent'
       }`}
     >
@@ -90,7 +90,7 @@ export function DiagramItem({
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
-                className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors cursor-pointer`}
+                className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer`}
               >
                 <MoreVertical className="h-4 w-4" />
               </div>
