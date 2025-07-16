@@ -9,7 +9,6 @@ import {
   Pencil,
   PanelLeft,
   ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { useThemeContext } from '@/contexts';
 

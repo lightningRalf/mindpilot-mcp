@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Pencil, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useDiagramContext, useThemeContext } from "@/contexts";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";

@@ -28,10 +28,17 @@ export interface DiagramProviderProps {
 }
 
 export function DiagramProvider({ children }: DiagramProviderProps) {
-  // Store just the diagram ID in localStorage
-  const [currentDiagramId, setCurrentDiagramId] = useLocalStorageString('mindpilot-mcp-current-diagram-id', null);
+  // Check if we're loading from an artifact URL - if so, don't use localStorage initially
+  const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+  const urlDiagramId = pathMatch ? pathMatch[1] : null;
   
-  console.log('[DiagramContext] Initial currentDiagramId from localStorage:', currentDiagramId);
+  // Store just the diagram ID in localStorage
+  const [currentDiagramId, setCurrentDiagramId] = useLocalStorageString(
+    'mindpilot-mcp-current-diagram-id', 
+    urlDiagramId // Use URL ID if present, otherwise null
+  );
+  
+  console.log('[DiagramContext] Initial currentDiagramId:', currentDiagramId, 'from URL:', urlDiagramId);
   console.log('[DiagramContext] Raw localStorage value:', localStorage.getItem('mindpilot-mcp-current-diagram-id'));
   
   // These are still in memory but not persisted individually
@@ -76,14 +83,20 @@ export function DiagramProvider({ children }: DiagramProviderProps) {
   // Track if we've loaded the initial diagram
   const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
-  // Load initial diagram if ID exists
+  // Load initial diagram if ID exists (but not if we're loading from URL)
   useEffect(() => {
+    // Skip auto-load if we have a URL diagram ID - App.tsx will handle it
+    if (urlDiagramId) {
+      setHasLoadedInitial(true);
+      return;
+    }
+    
     if (currentDiagramId && !hasLoadedInitial) {
       console.log('[DiagramContext] Loading diagram from localStorage ID:', currentDiagramId);
       loadDiagramById(currentDiagramId);
       setHasLoadedInitial(true);
     }
-  }, [currentDiagramId, hasLoadedInitial, loadDiagramById]); // React to ID changes
+  }, [currentDiagramId, hasLoadedInitial, loadDiagramById, urlDiagramId]); // React to ID changes
 
   // Convenience method to update diagram, title, and collection
   const updateDiagram = useCallback((newDiagram: string, newTitle?: string, newCollection?: string | null) => {

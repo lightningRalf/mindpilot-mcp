@@ -154,6 +154,14 @@ export function HistoryPanel({
         className={`p-2 text-xs border-t flex items-center justify-between ${isDarkMode ? "text-neutral-400 border-neutral-700" : "text-muted-foreground border-neutral-300"}`}
       >
         <span>Mindpilot MCP v{APP_VERSION}</span>
+        <a
+          href="https://github.com/abrinsmead/mindpilot-mcp/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`hover:underline ${isDarkMode ? "text-neutral-400 hover:text-neutral-300" : "text-muted-foreground hover:text-neutral-600"}`}
+        >
+          Feedback
+        </a>
       </div>
 
       {/* Cloud Mode Modal */}

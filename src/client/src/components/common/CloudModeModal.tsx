@@ -34,29 +34,32 @@ export function CloudModeModal({ isOpen, onClose, isDarkMode }: CloudModeModalPr
       <DialogContent className={isDarkMode ? "bg-neutral-800 border-neutral-700" : "bg-white border-neutral-200"}>
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <Cloud className="h-6 w-6 text-blue-500" />
+            <Cloud className={isDarkMode ? "h-6 w-6 text-orange-400" : "h-6 w-6 text-orange-500"} />
             <DialogTitle className={isDarkMode ? "text-neutral-100" : "text-neutral-900"}>
               Cloud Mode Is Not Real
             </DialogTitle>
           </div>
           <DialogDescription className={isDarkMode ? "text-neutral-400" : "text-neutral-600"}>
-            Mindpilot doens't have a cloud option yet. Click yes if you would you like a cloud mode for saving diagrams and sharing with your team?
+            Mindpilot doesn't have a cloud option yet. Click yes if you would like a cloud mode for saving diagrams and sharing with your team?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleNo}
             className={isDarkMode
-              ? "border-neutral-600 hover:bg-neutral-700 text-neutral-300"
-              : "border-neutral-300 hover:bg-neutral-100"
+              ? "hover:bg-neutral-700 hover:text-neutral-100"
+              : "hover:bg-neutral-100 hover:text-neutral-900"
             }
           >
             No
           </Button>
           <Button
             onClick={handleYes}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className={isDarkMode
+              ? "bg-orange-600 hover:bg-orange-700 text-white"
+              : "bg-orange-500 hover:bg-orange-600 text-white"
+            }
           >
             Yes
           </Button>
