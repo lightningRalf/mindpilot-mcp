@@ -1,16 +1,6 @@
 import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useWebSocketStateMachine } from './useWebSocketStateMachine';
 
-export interface DiagramUpdate {
-  diagram: string;
-  title?: string;
-}
-
-export interface UseMcpServerWebSocketOptions {
-  onDiagramUpdate?: (update: DiagramUpdate) => void;
-  onStatusUpdate?: (status: string) => void;
-}
-
 export interface UseMcpServerWebSocketReturn {
   connectionStatus: string;
   isConnected: boolean;
@@ -19,12 +9,9 @@ export interface UseMcpServerWebSocketReturn {
 
 /**
  * High-level WebSocket hook for connecting to the MCP server
- * Handles WebSocket connection to port 4000, message processing, and visibility queries
+ * Handles WebSocket connection to port 4000 and basic connectivity
  */
-export function useMcpServerWebSocket({
-  onDiagramUpdate,
-  onStatusUpdate,
-}: UseMcpServerWebSocketOptions = {}): UseMcpServerWebSocketReturn {
+export function useMcpServerWebSocket(): UseMcpServerWebSocketReturn {
   // Determine WebSocket URL based on environment
   const wsUrl = useMemo(() => {
     const currentPort = window.location.port;
@@ -57,31 +44,9 @@ export function useMcpServerWebSocket({
     onMessage: useCallback((data: any) => {
       console.log('[WebSocket Message]', data);
       
-      if (data.type === "render_result" && data.diagram) {
-        console.log("Updating diagram from WebSocket broadcast");
-        
-        if (onDiagramUpdate) {
-          onDiagramUpdate({
-            diagram: data.diagram,
-            title: data.title
-          });
-        }
-        
-        if (onStatusUpdate) {
-          onStatusUpdate("Rendered successfully (via broadcast)");
-        }
-      } else if (data.type === "visibility_query") {
-        // Server is asking if we're visible
-        const isVisible = !document.hidden;
-        console.log('[Visibility Query] Responding with:', { isVisible, hidden: document.hidden });
-        
-        // Send visibility response
-        sendRef.current({
-          type: "visibility_response",
-          isVisible
-        });
-      }
-    }, [onDiagramUpdate, onStatusUpdate]),
+      // We no longer handle render_result messages since each diagram opens in a new tab
+      // Only handle ping/pong or other control messages if needed
+    }, []),
   });
   
   // Update sendRef with actual send function

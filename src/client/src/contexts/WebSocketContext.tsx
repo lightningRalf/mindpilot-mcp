@@ -11,19 +11,12 @@ const WebSocketContext = createContext<WebSocketContextValue | undefined>(undefi
 
 export interface WebSocketProviderProps {
   children: ReactNode;
-  onDiagramUpdate?: (update: { diagram: string; title?: string }) => void;
-  onStatusUpdate?: (status: string) => void;
 }
 
 export function WebSocketProvider({ 
-  children,
-  onDiagramUpdate,
-  onStatusUpdate 
+  children
 }: WebSocketProviderProps) {
-  const { connectionStatus, isConnected, reconnect } = useMcpServerWebSocket({
-    onDiagramUpdate,
-    onStatusUpdate,
-  });
+  const { connectionStatus, isConnected, reconnect } = useMcpServerWebSocket();
 
   const value: WebSocketContextValue = {
     connectionStatus,

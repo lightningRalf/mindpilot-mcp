@@ -16,7 +16,6 @@ import { httpLogger as logger } from "../shared/logger.js";
 import {
   RenderResult,
   MCPClient,
-  DiagramBroadcast,
   ClientMessage,
   ServerMessage,
   ServerStatus,
@@ -33,7 +32,6 @@ export class SingletonHTTPServer {
   private fastify: FastifyInstance | null = null;
   private port: number;
   private browserConnections: Set<any> = new Set(); // Track browser WebSocket connections
-  private lastDiagram: DiagramBroadcast | null = null;
   private startTime: Date = new Date();
   private lastMcpActivity: Date = new Date(); // Track last MCP client activity
   private shutdownTimer: NodeJS.Timeout | null = null;
@@ -168,29 +166,9 @@ export class SingletonHTTPServer {
             }
           }
 
-          // Check if we need to open a browser
-          logger.info("About to check browser visibility", {
-            browserCount: this.browserConnections.size,
-          });
-          const hasVisibleBrowser = await this.checkBrowserVisibility();
-          logger.info("Visibility check result", { hasVisibleBrowser });
-          if (!hasVisibleBrowser) {
-            logger.info("No visible browsers detected, opening new tab");
-            this.openBrowser();
-          }
-
-          // Broadcast to all WebSocket clients
-          this.broadcastToClients({
-            type: "render_result",
-            clientId,
-            clientName,
-            diagram: result.diagram,
-            title,
-            svg: result.svg,
-            error: result.error,
-            details: result.details,
-            background: result.background,
-          });
+          // Always open a new browser tab for each diagram
+          logger.info("Opening new browser tab for diagram");
+          this.openBrowser();
 
           return reply.send(result);
         } catch (error) {
@@ -352,85 +330,6 @@ export class SingletonHTTPServer {
     });
   }
 
-  private broadcastToClients(message: DiagramBroadcast) {
-    // Cache the last diagram
-    this.lastDiagram = message;
-
-    // Broadcast to all browser connections
-    const messageStr = JSON.stringify(message);
-    let sentCount = 0;
-    this.browserConnections.forEach((socket) => {
-      try {
-        socket.socket.send(messageStr);
-        sentCount++;
-      } catch (err) {
-        // Socket might be closed
-        logger.debug("Failed to send to browser socket", { err });
-      }
-    });
-    logger.debug("Broadcast diagram to browsers", {
-      sentCount,
-      totalBrowsers: this.browserConnections.size,
-      messageLength: messageStr.length,
-    });
-  }
-
-  private async checkBrowserVisibility(): Promise<boolean> {
-    if (this.browserConnections.size === 0) {
-      logger.debug("No browsers connected, returning false");
-      return false; // No browsers connected
-    }
-
-    logger.debug("Starting browser visibility check", {
-      browserCount: this.browserConnections.size,
-    });
-
-    // Create a promise for each connected browser
-    const visibilityPromises = Array.from(this.browserConnections).map(
-      (socket, index) => {
-        return new Promise<boolean>((resolve) => {
-          const browserId = `browser-${index}`;
-          const timeout = setTimeout(() => {
-            logger.debug(`Browser ${browserId} timed out (assumed hidden)`);
-            socket.socket.off("message", messageHandler); // Remove handler on timeout
-            resolve(false); // Assume hidden if no response in 500ms
-          }, 500);
-
-          const messageHandler = (data: any) => {
-            try {
-              const response = JSON.parse(data.toString());
-              if (response.type === "visibility_response") {
-                clearTimeout(timeout);
-                socket.socket.off("message", messageHandler);
-                logger.debug(`Browser ${browserId} responded`, {
-                  isVisible: response.isVisible,
-                });
-                resolve(response.isVisible === true);
-              }
-            } catch (error) {
-              // Ignore parse errors
-            }
-          };
-
-          socket.socket.on("message", messageHandler);
-          socket.socket.send(JSON.stringify({ type: "visibility_query" }));
-          logger.debug(`Sent visibility query to ${browserId}`);
-        });
-      },
-    );
-
-    // Check if any browser is visible
-    const results = await Promise.all(visibilityPromises);
-    const hasVisibleBrowser = results.some((isVisible) => isVisible);
-
-    logger.info("Browser visibility check complete", {
-      totalBrowsers: this.browserConnections.size,
-      responses: results,
-      hasVisibleBrowser,
-    });
-
-    return hasVisibleBrowser;
-  }
 
   private async openBrowser() {
     const isProduction = process.env.NODE_ENV !== "development";
