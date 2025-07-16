@@ -117,8 +117,16 @@ export function useDiagramHistory({ isExpanded = true, searchQuery, organizeByDa
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    if (diffDays < 30) return `${diffDays}d ago`;
+    
+    const diffWeeks = Math.floor(diffDays / 7);
+    if (diffWeeks < 4) return `${diffWeeks}w ago`;
+    
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths}mo ago`;
+    
+    const diffYears = Math.floor(diffDays / 365);
+    return `${diffYears}y ago`;
   }, []);
 
   // Toggle collection
