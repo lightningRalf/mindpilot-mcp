@@ -4,8 +4,6 @@ import Fastify, {
   FastifyReply,
 } from "fastify";
 import fastifyStatic from "@fastify/static";
-import fastifyWebsocket from "@fastify/websocket";
-import { WebSocket } from "ws";
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,9 +13,6 @@ import { setMaxListeners } from "events";
 import { httpLogger as logger } from "../shared/logger.js";
 import {
   RenderResult,
-  MCPClient,
-  ClientMessage,
-  ServerMessage,
   ServerStatus,
 } from "../shared/types.js";
 import { renderMermaid } from "../shared/renderer.js";
@@ -31,7 +26,6 @@ const __dirname = path.dirname(__filename);
 export class SingletonHTTPServer {
   private fastify: FastifyInstance | null = null;
   private port: number;
-  private browserConnections: Set<any> = new Set(); // Track browser WebSocket connections
   private startTime: Date = new Date();
   private lastMcpActivity: Date = new Date(); // Track last MCP client activity
   private shutdownTimer: NodeJS.Timeout | null = null;
@@ -70,9 +64,6 @@ export class SingletonHTTPServer {
 
   private async setupRoutes() {
     if (!this.fastify) return;
-
-    // Register WebSocket plugin
-    await this.fastify.register(fastifyWebsocket);
 
     // Serve static files in production mode
     const isProduction = process.env.NODE_ENV !== "development";
@@ -126,7 +117,6 @@ export class SingletonHTTPServer {
 
         return reply.send({
           serverRunning: true,
-          browserConnections: this.browserConnections.size,
           mcpActive: mcpActiveRecently,
           lastMcpActivitySecondsAgo: Math.floor(
             (Date.now() - this.lastMcpActivity.getTime()) / 1000,
@@ -290,54 +280,6 @@ export class SingletonHTTPServer {
         }
       },
     );
-
-    // WebSocket route (for browser connections only)
-    const self = this;
-    this.fastify.register(async function (fastify) {
-      fastify.get("/ws", { websocket: true }, (socket, request) => {
-        // Track browser connections (for broadcasting only)
-        self.browserConnections.add(socket);
-        logger.info("Browser connected via WebSocket", {
-          totalBrowsers: self.browserConnections.size,
-        });
-
-        // Don't send last diagram on connection - let client use localStorage
-
-        // Listen to events on the actual WebSocket, not the stream wrapper
-        socket.socket.on("message", async (data) => {
-          try {
-            const message: ClientMessage = JSON.parse(data.toString());
-            logger.debug("WebSocket message from browser", {
-              messageType: message.type,
-            });
-
-            switch (message.type) {
-              case "ping":
-                socket.socket.send(JSON.stringify({ type: "pong" }));
-                break;
-              default:
-                logger.debug("Ignoring message type from browser", {
-                  type: message.type,
-                });
-            }
-          } catch (error) {
-            logger.error("WebSocket message error", { error });
-          }
-        });
-
-        socket.socket.on("close", () => {
-          self.browserConnections.delete(socket);
-          logger.info("Browser disconnected", {
-            remainingBrowsers: self.browserConnections.size,
-          });
-        });
-
-        socket.socket.on("error", (error) => {
-          logger.error("WebSocket error", { error });
-          self.browserConnections.delete(socket);
-        });
-      });
-    });
   }
 
 
@@ -397,7 +339,6 @@ export class SingletonHTTPServer {
       this.fastify = null;
     }
 
-    this.browserConnections.clear();
     process.exit(0);
   }
 
@@ -445,10 +386,6 @@ export class SingletonHTTPServer {
 
   getPort(): number {
     return this.port;
-  }
-
-  getBrowserConnectionCount(): number {
-    return this.browserConnections.size;
   }
 }
 

@@ -36,7 +36,6 @@
   "license": "MIT",
   "dependencies": {
     "@fastify/static": "^7.0.0",
-    "@fastify/websocket": "^8.3.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "fastify": "^4.26.0",
     "mermaid": "11.6.0",

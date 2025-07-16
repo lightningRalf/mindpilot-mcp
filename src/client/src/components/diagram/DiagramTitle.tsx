@@ -13,7 +13,7 @@ export function DiagramTitle({ title, collection, isDarkMode, onTitleChange, isE
 
   return (
     <div className="absolute top-4 left-0 right-0 flex justify-center items-center pointer-events-none z-40">
-      <div className={`px-4 py-2 mt-3 rounded-lg backdrop-blur-md pointer-events-auto ${isDarkMode ? "bg-neutral-900/50" : "bg-neutral-200/50"}`}>
+      <div className={`px-4 py-2 mt-3 rounded-lg backdrop-blur-md pointer-events-auto ${isDarkMode ? "bg-neutral-900/50" : "bg-neutral-300/25"}`}>
         {collection && (
           <div className={`text-xs text-center mb-0.5 ${isDarkMode ? "text-neutral-400" : "text-neutral-500"}`}>
             {collection}

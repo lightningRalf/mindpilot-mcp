@@ -13,30 +13,10 @@ export interface ValidationResult {
   warnings?: string[];
 }
 
-export interface MCPClient {
-  id: string;
-  name: string;
-  connectedAt: Date;
-  lastActivity: Date;
-}
-
 export interface ServerStatus {
   running: boolean;
   port: number;
-  clients: MCPClient[];
   uptime: number;
-}
-
-export interface ClientMessage {
-  type: "ping";
-  clientId?: string;
-  clientName?: string;
-}
-
-export interface ServerMessage {
-  type: "pong" | "error";
-  clientId?: string;
-  error?: string;
 }
 
 // History types

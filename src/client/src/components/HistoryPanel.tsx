@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { SearchBar, DiagramList } from './history';
-import { MCPServerStatus } from './connection';
 import { ModeSelector, CloudModeModal } from '@/components/common';
 import { useDiagramHistory, useExportDiagram, useAnalytics, useLocalStorage } from '@/hooks';
+import { APP_VERSION } from '@/constants/app';
 
 export interface HistoryPanelProps {
   onSelectDiagram: (diagramId: string) => void;
   isDarkMode: boolean;
   isExpanded?: boolean;
   currentDiagramId?: string | null;
-  connectionStatus: string;
-  onReconnect: () => void;
   onCurrentDiagramTitleChange?: (newTitle: string) => void;
   refreshTrigger?: number;
 }
@@ -20,8 +18,6 @@ export function HistoryPanel({
   isDarkMode,
   isExpanded = true,
   currentDiagramId,
-  connectionStatus,
-  onReconnect,
   onCurrentDiagramTitleChange,
   refreshTrigger
 }: HistoryPanelProps) {
@@ -157,12 +153,7 @@ export function HistoryPanel({
       <div
         className={`p-2 text-xs border-t flex items-center justify-between ${isDarkMode ? "text-neutral-400 border-neutral-700" : "text-muted-foreground border-neutral-300"}`}
       >
-        <MCPServerStatus
-          connectionStatus={connectionStatus}
-          onReconnect={onReconnect}
-          isDarkMode={isDarkMode}
-          isCollapsedView={false}
-        />
+        <span>Mindpilot MCP v{APP_VERSION}</span>
       </div>
 
       {/* Cloud Mode Modal */}

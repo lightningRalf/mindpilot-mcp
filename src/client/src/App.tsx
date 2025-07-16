@@ -1,9 +1,8 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Pencil, ChevronRight } from "lucide-react";
-import { useDiagramContext, useWebSocketContext, useThemeContext } from "@/contexts";
+import { useDiagramContext, useThemeContext } from "@/contexts";
 import { HistoryPanel } from "@/components/HistoryPanel";
-import { FloatingConnectionStatus } from "@/components/connection";
 import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
 import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor } from "@/components/diagram";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
@@ -15,7 +14,6 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 export function App() {
   // Get state from contexts
   const { diagram, setDiagram, setTitle, title, collection, setCollection, currentDiagramId, setCurrentDiagramId, loadDiagramById } = useDiagramContext();
-  const { connectionStatus, reconnect } = useWebSocketContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
 
@@ -59,7 +57,7 @@ export function App() {
   // Handle title change from diagram title component
   const handleTitleChange = useCallback(async (newTitle: string) => {
     setTitle(newTitle);
-    
+
     // If we have a current diagram ID, also save to server
     if (currentDiagramId) {
       try {
@@ -70,7 +68,7 @@ export function App() {
           },
           body: JSON.stringify({ title: newTitle }),
         });
-        
+
         // Trigger history refresh to update the history panel
         setHistoryRefreshTrigger(prev => prev + 1);
       } catch (error) {
@@ -82,7 +80,7 @@ export function App() {
   // Check URL on initial mount only
   useEffect(() => {
     const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
-    
+
     if (pathMatch && pathMatch[1]) {
       const diagramId = pathMatch[1];
       loadDiagramById(diagramId);
@@ -93,7 +91,7 @@ export function App() {
   useEffect(() => {
     const handlePopState = () => {
       const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
-      
+
       if (pathMatch && pathMatch[1]) {
         const diagramId = pathMatch[1];
         if (diagramId !== currentDiagramId) {
@@ -116,7 +114,7 @@ export function App() {
   const updateUrlForDiagram = useCallback((diagramId: string | null) => {
     const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
     const currentUrlId = pathMatch ? pathMatch[1] : null;
-    
+
     if (diagramId && diagramId !== currentUrlId) {
       window.history.pushState({}, '', `/artifact/${diagramId}`);
     } else if (!diagramId && window.location.pathname !== '/') {
@@ -210,8 +208,6 @@ export function App() {
       isDarkMode={isDarkMode}
       isExpanded={!isHistoryCollapsed}
       currentDiagramId={currentDiagramId}
-      connectionStatus={connectionStatus}
-      onReconnect={reconnect}
       onCurrentDiagramTitleChange={setTitle}
       refreshTrigger={historyRefreshTrigger}
     />
@@ -220,10 +216,10 @@ export function App() {
   // Center panel content
   const centerContent = (
     <div className={`h-full flex flex-col relative ${isDarkMode ? "bg-neutral-800" : "bg-neutral-100"}`}>
-      <DiagramTitle 
-        title={title} 
-        collection={collection} 
-        isDarkMode={isDarkMode} 
+      <DiagramTitle
+        title={title}
+        collection={collection}
+        isDarkMode={isDarkMode}
         isEditable={true}
         onTitleChange={handleTitleChange}
       />
@@ -293,14 +289,6 @@ export function App() {
 
   const floatingElements = (
     <>
-      {/* MCP Server Status in bottom left when both panels are collapsed */}
-      <FloatingConnectionStatus
-        isVisible={isEditCollapsed && isHistoryCollapsed}
-        connectionStatus={connectionStatus}
-        onReconnect={reconnect}
-        isDarkMode={isDarkMode}
-      />
-
       {/* Hotkey Modal */}
       <HotkeyModal
         isOpen={showHotkeyModal}
