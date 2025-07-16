@@ -2,10 +2,8 @@ import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2, Sun, Moon } from "lucide-react";
 
 interface ZoomControlsProps {
-  zoom: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onZoomReset: () => void;
   onFitToScreen: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
@@ -13,10 +11,8 @@ interface ZoomControlsProps {
 }
 
 export function ZoomControls({
-  zoom,
   onZoomIn,
   onZoomOut,
-  onZoomReset,
   onFitToScreen,
   isDarkMode,
   onToggleTheme,
@@ -33,17 +29,6 @@ export function ZoomControls({
       >
         <ZoomOut className="h-4 w-4" />
       </Button>
-      <div className="w-2" />
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onZoomReset}
-        title="Reset zoom"
-        className="h-8 w-14 text-sm text-center flex-shrink-0 font-normal"
-      >
-        {Math.round(zoom * 100)}%
-      </Button>
-      <div className="w-2" />
       <Button
         variant="ghost"
         size="sm"
@@ -53,7 +38,6 @@ export function ZoomControls({
       >
         <ZoomIn className="h-4 w-4" />
       </Button>
-      <div className="w-px h-6 bg-neutral-300 dark:bg-neutral-600 mx-1 flex-shrink-0" />
       <Button
         variant="ghost"
         size="sm"
@@ -63,7 +47,6 @@ export function ZoomControls({
       >
         <Maximize2 className="h-4 w-4" />
       </Button>
-      <div className="w-px h-6 bg-neutral-300 dark:bg-neutral-600 mx-1 flex-shrink-0" />
       <Button
         variant="ghost"
         size="sm"

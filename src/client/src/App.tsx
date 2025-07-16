@@ -184,10 +184,8 @@ export function App() {
       />
 
       <ZoomControls
-        zoom={zoom}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-        onZoomReset={handleZoomReset}
         onFitToScreen={() => handleFitToScreen()}
         isDarkMode={isDarkMode}
         onToggleTheme={() => {
