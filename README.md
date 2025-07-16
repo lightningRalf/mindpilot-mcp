@@ -80,6 +80,27 @@ In the `Command to run MCPserver` field enter `npx @mindpilot/mcp@latest` and cl
 ## Configuration Options
 - **Port**: The server defaults to port 4000 but can be configured using the `--port` command line switch.
 
+## Anonymous Usage Tracking
+
+Mindpilot MCP collects anonymous usage data to help us understand how the product is being used and improve the user experience.
+
+### Disabling Analytics
+If you prefer not to share anonymous usage data, you can disable analytics by adding the `--disable-analytics` flag to your MCP configuration:
+
+**Claude Code:**
+```bash
+claude mcp add mindpilot -- npx @mindpilot/mcp@latest --disable-analytics
+```
+
+**Other IDEs:**
+Add `"--disable-analytics"` to the args array in your configuration:
+```json
+{
+  "command": "npx",
+  "args": ["@mindpilot/mcp@latest", "--disable-analytics"]
+}
+```
+
 ## Using the MCP server
 After configuring the MCP in your coding agent you can make requests like "create a diagram about x" and it should use the MCP server to render Mermaid diagrams for you in a browser connected to the MCP server.
 

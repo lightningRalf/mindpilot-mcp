@@ -31,9 +31,11 @@ export class SingletonHTTPServer {
   private shutdownTimer: NodeJS.Timeout | null = null;
   private readonly SHUTDOWN_DELAY_MS = 5000; // 5 seconds grace period
   private readonly MCP_TIMEOUT_MS = 60000; // 60 seconds MCP timeout
+  private disableAnalytics: boolean;
 
-  constructor(port: number = 4000) {
+  constructor(port: number = 4000, disableAnalytics: boolean = false) {
     this.port = port;
+    this.disableAnalytics = disableAnalytics;
   }
 
   async start(): Promise<void> {
@@ -124,6 +126,7 @@ export class SingletonHTTPServer {
           secondsUntilShutdown,
           uptime: Math.floor((Date.now() - this.startTime.getTime()) / 1000),
           port: this.port,
+          disableAnalytics: this.disableAnalytics,
         });
       },
     );
@@ -412,12 +415,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         type: 'string',
         short: 'p',
         default: '4000'
+      },
+      'disable-analytics': {
+        type: 'boolean',
+        default: false
       }
     }
   });
   
   const port = parseInt(values.port!, 10);
-  const server = new SingletonHTTPServer(port);
+  const server = new SingletonHTTPServer(port, values['disable-analytics'] as boolean);
 
   server.start().catch((error) => {
     logger.error("Failed to start server", { error });
