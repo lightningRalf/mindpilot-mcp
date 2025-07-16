@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Pencil, ChevronRight } from "lucide-react";
 import { useDiagramContext, useWebSocketContext, useThemeContext } from "@/contexts";
@@ -14,7 +14,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 
 export function App() {
   // Get state from contexts
-  const { diagram, setDiagram, setTitle, title, collection, currentDiagramId, loadDiagramById } = useDiagramContext();
+  const { diagram, setDiagram, setTitle, title, collection, setCollection, currentDiagramId, setCurrentDiagramId, loadDiagramById } = useDiagramContext();
   const { connectionStatus, reconnect } = useWebSocketContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
@@ -52,9 +52,6 @@ export function App() {
 
 
 
-  const handleSelectDiagram = useCallback((diagramId: string) => {
-    loadDiagramById(diagramId);
-  }, [loadDiagramById]);
 
   // Shared state for forcing history refresh
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
@@ -82,8 +79,56 @@ export function App() {
     }
   }, [setTitle, currentDiagramId]);
 
+  // Check URL on initial mount only
+  useEffect(() => {
+    const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+    
+    if (pathMatch && pathMatch[1]) {
+      const diagramId = pathMatch[1];
+      loadDiagramById(diagramId);
+    }
+  }, []); // Empty deps - only run on mount
 
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+      
+      if (pathMatch && pathMatch[1]) {
+        const diagramId = pathMatch[1];
+        if (diagramId !== currentDiagramId) {
+          loadDiagramById(diagramId);
+        }
+      } else if (window.location.pathname === '/' && currentDiagramId) {
+        // Clear selection when navigating to root
+        setCurrentDiagramId(null);
+        setDiagram('');
+        setTitle('');
+        setCollection(null);
+      }
+    };
 
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentDiagramId, loadDiagramById, setCurrentDiagramId, setDiagram, setTitle, setCollection]);
+
+  // Update URL when diagram selection changes
+  const updateUrlForDiagram = useCallback((diagramId: string | null) => {
+    const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+    const currentUrlId = pathMatch ? pathMatch[1] : null;
+    
+    if (diagramId && diagramId !== currentUrlId) {
+      window.history.pushState({}, '', `/artifact/${diagramId}`);
+    } else if (!diagramId && window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/');
+    }
+  }, []);
+
+  // Modified handleSelectDiagram to update URL
+  const handleSelectDiagram = useCallback((diagramId: string) => {
+    loadDiagramById(diagramId);
+    updateUrlForDiagram(diagramId);
+  }, [loadDiagramById, updateUrlForDiagram]);
 
   // Keyboard shortcuts
   const shortcuts = useMemo<KeyboardShortcut[]>(() => [

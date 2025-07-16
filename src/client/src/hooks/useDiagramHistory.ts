@@ -262,6 +262,43 @@ export function useDiagramHistory({ isExpanded = true, searchQuery, organizeByDa
     }
   }, [organizeByDate, dateGroupedHistory]);
 
+  // Auto-expand the collection/date group containing the current diagram
+  useEffect(() => {
+    if (!currentDiagramId || history.length === 0) return;
+
+    // Find the current diagram in history
+    const currentEntry = history.find(entry => entry.id === currentDiagramId);
+    if (!currentEntry) return;
+
+    if (organizeByDate) {
+      // Find which date group contains this diagram
+      const date = new Date(currentEntry.timestamp);
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const lastWeek = new Date(today);
+      lastWeek.setDate(lastWeek.getDate() - 7);
+
+      let groupName: string;
+      if (date.toDateString() === today.toDateString()) {
+        groupName = 'Today';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        groupName = 'Yesterday';
+      } else if (date > lastWeek) {
+        groupName = 'This Week';
+      } else {
+        groupName = 'Older';
+      }
+
+      // Expand that date group
+      setExpandedCollections(prev => new Set([...prev, groupName]));
+    } else {
+      // Expand the collection containing this diagram
+      const collectionName = currentEntry.collection || 'uncategorized';
+      setExpandedCollections(prev => new Set([...prev, collectionName]));
+    }
+  }, [currentDiagramId, history, organizeByDate]);
+
   return {
     history: filteredHistory,
     totalDiagrams: history.length,

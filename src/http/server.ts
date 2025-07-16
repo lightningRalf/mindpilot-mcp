@@ -93,6 +93,14 @@ export class SingletonHTTPServer {
             return reply.sendFile("index.html");
           },
         );
+
+        // Handle /artifact/:id route for direct diagram access
+        this.fastify.get(
+          "/artifact/:id",
+          async (request: FastifyRequest, reply: FastifyReply) => {
+            return reply.sendFile("index.html");
+          },
+        );
       } catch {
         logger.warn(
           "Built client not found. Run 'npm run build' to build the client.",
@@ -154,12 +162,14 @@ export class SingletonHTTPServer {
           this.lastMcpActivity = new Date();
           this.cancelShutdownTimer(); // Cancel any pending shutdown
 
-          // Save to history if successful
+          // Save to history if successful and get the diagram ID
+          let diagramId: string | undefined;
           if (result.type === "success" && workingDir && title) {
             try {
               const collection = await detectGitRepo(workingDir);
-              await historyService.saveDiagram(diagram, title, collection);
-              logger.info(`Saved diagram "${title}" to collection: ${collection || 'uncollected'}`);
+              const savedEntry = await historyService.saveDiagram(diagram, title, collection);
+              diagramId = savedEntry.id;
+              logger.info(`Saved diagram "${title}" with ID ${diagramId} to collection: ${collection || 'uncollected'}`);
             } catch (error) {
               logger.error("Failed to save diagram to history", { error });
               // Don't fail the render if history save fails
@@ -167,8 +177,8 @@ export class SingletonHTTPServer {
           }
 
           // Always open a new browser tab for each diagram
-          logger.info("Opening new browser tab for diagram");
-          this.openBrowser();
+          logger.info("Opening new browser tab for diagram", { diagramId });
+          this.openBrowser(diagramId);
 
           return reply.send(result);
         } catch (error) {
@@ -331,15 +341,17 @@ export class SingletonHTTPServer {
   }
 
 
-  private async openBrowser() {
+  private async openBrowser(diagramId?: string) {
     const isProduction = process.env.NODE_ENV !== "development";
-    const url = isProduction
+    const baseUrl = isProduction
       ? `http://localhost:${this.port}`
       : `http://localhost:5173`;
+    
+    const url = diagramId ? `${baseUrl}/artifact/${diagramId}` : baseUrl;
 
     try {
       await open(url);
-      logger.info("Opened browser", { url });
+      logger.info("Opened browser", { url, diagramId });
     } catch (error) {
       logger.error("Failed to open browser", { error });
     }
