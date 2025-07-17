@@ -26,7 +26,7 @@ const shortcuts: Shortcut[] = [
   // Zoom shortcuts
   { keys: "⌘+", description: "Zoom in", category: "View" },
   { keys: "⌘-", description: "Zoom out", category: "View" },
-  { keys: "⌘0", description: "Reset zoom", category: "View" },
+  { keys: "⌘0", description: "Zoom to fit", category: "View" },
 
   // Help
   { keys: "?", description: "Show keyboard shortcuts", category: "Help" },

@@ -12,7 +12,7 @@ export function useExportDiagram({ isDarkMode }: ExportDiagramOptions) {
       mermaid.initialize({
         startOnLoad: false,
         theme: isDarkMode ? 'dark' : 'default',
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         suppressErrorRendering: true,
         flowchart: {
           useMaxWidth: false,
@@ -41,10 +41,49 @@ export function useExportDiagram({ isDarkMode }: ExportDiagramOptions) {
           throw new Error('Failed to render diagram');
         }
 
-        // Get SVG dimensions
+        // Clone the SVG to avoid modifying the original
+        const svgClone = svgElement.cloneNode(true) as SVGElement;
+        
+        // Set explicit dimensions and viewBox
         const bbox = svgElement.getBBox();
         const width = bbox.width || 800;
         const height = bbox.height || 600;
+        svgClone.setAttribute('width', width.toString());
+        svgClone.setAttribute('height', height.toString());
+        if (!svgClone.getAttribute('viewBox')) {
+          svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        }
+        
+        // Add XML namespace
+        svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        
+        // Remove any external references that might taint the canvas
+        // Remove all <use> elements with external references
+        const useElements = svgClone.querySelectorAll('use');
+        useElements.forEach(use => {
+          const href = use.getAttribute('href') || use.getAttribute('xlink:href');
+          if (href && href.startsWith('http')) {
+            use.remove();
+          }
+        });
+        
+        // Remove any images with external sources
+        const images = svgClone.querySelectorAll('image');
+        images.forEach(img => {
+          const href = img.getAttribute('href') || img.getAttribute('xlink:href');
+          if (href && href.startsWith('http')) {
+            img.remove();
+          }
+        });
+        
+        // Inline all styles from stylesheets
+        const styles = svgClone.querySelectorAll('style');
+        styles.forEach(style => {
+          // Ensure style content doesn't reference external resources
+          if (style.textContent) {
+            style.textContent = style.textContent.replace(/@import\s+url\([^)]+\);?/g, '');
+          }
+        });
 
         // Create canvas
         const canvas = document.createElement('canvas');
@@ -64,30 +103,45 @@ export function useExportDiagram({ isDarkMode }: ExportDiagramOptions) {
         ctx.fillStyle = isDarkMode ? '#1f2937' : '#ffffff';
         ctx.fillRect(0, 0, width, height);
 
-        // Convert SVG to data URL
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        const svgUrl = URL.createObjectURL(svgBlob);
+        // Convert SVG to data URL using the clone
+        const svgData = new XMLSerializer().serializeToString(svgClone);
+        // Use base64 data URL to avoid cross-origin issues
+        const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
+        const svgUrl = `data:image/svg+xml;base64,${svgBase64}`;
 
         // Load SVG as image
         const img = new Image();
+        
+        // Add error handler
+        img.onerror = (error) => {
+          console.error('Failed to load SVG image:', error);
+          throw new Error('Failed to load SVG for export');
+        };
+        
         img.onload = () => {
-          ctx.drawImage(img, 0, 0, width, height);
-          URL.revokeObjectURL(svgUrl);
+          try {
+            ctx.drawImage(img, 0, 0, width, height);
 
-          // Convert to PNG and download
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }
-          }, 'image/png');
+            // Convert to PNG and download
+            canvas.toBlob((blob) => {
+              if (blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } else {
+                console.error('Failed to create PNG blob');
+                alert('Failed to create PNG file');
+              }
+            }, 'image/png');
+          } catch (error) {
+            console.error('Failed to draw image:', error);
+            alert('Failed to export diagram');
+          }
         };
 
         img.src = svgUrl;

@@ -17,7 +17,7 @@ import {
 } from "../shared/types.js";
 import { renderMermaid } from "../shared/renderer.js";
 import { validateMermaidSyntax } from "../shared/validator.js";
-import { historyService } from "../shared/historyService.js";
+import { HistoryService } from "../shared/historyService.js";
 import { detectGitRepo } from "../shared/gitRepoDetector.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,10 +32,14 @@ export class SingletonHTTPServer {
   private readonly SHUTDOWN_DELAY_MS = 5000; // 5 seconds grace period
   private readonly MCP_TIMEOUT_MS = 60000; // 60 seconds MCP timeout
   private disableAnalytics: boolean;
+  private dataPath: string | undefined;
+  private historyService: HistoryService;
 
-  constructor(port: number = 4000, disableAnalytics: boolean = false) {
+  constructor(port: number = 4000, disableAnalytics: boolean = false, dataPath?: string) {
     this.port = port;
     this.disableAnalytics = disableAnalytics;
+    this.dataPath = dataPath;
+    this.historyService = new HistoryService(dataPath);
   }
 
   async start(): Promise<void> {
@@ -160,7 +164,7 @@ export class SingletonHTTPServer {
           if (result.type === "success" && workingDir && title) {
             try {
               const collection = await detectGitRepo(workingDir);
-              const savedEntry = await historyService.saveDiagram(diagram, title, collection);
+              const savedEntry = await this.historyService.saveDiagram(diagram, title, collection);
               diagramId = savedEntry.id;
               logger.info(`Saved diagram "${title}" with ID ${diagramId} to collection: ${collection || 'uncollected'}`);
             } catch (error) {
@@ -200,7 +204,7 @@ export class SingletonHTTPServer {
       async (request: FastifyRequest, reply: FastifyReply) => {
         try {
           const { collection } = request.query as any;
-          const diagrams = await historyService.getDiagrams(collection);
+          const diagrams = await this.historyService.getDiagrams(collection);
           return reply.send(diagrams);
         } catch (error) {
           logger.error("Failed to get history", { error });
@@ -213,7 +217,7 @@ export class SingletonHTTPServer {
       "/api/collections",
       async (request: FastifyRequest, reply: FastifyReply) => {
         try {
-          const collections = await historyService.getCollections();
+          const collections = await this.historyService.getCollections();
           return reply.send(collections);
         } catch (error) {
           logger.error("Failed to get collections", { error });
@@ -227,7 +231,7 @@ export class SingletonHTTPServer {
       async (request: FastifyRequest, reply: FastifyReply) => {
         try {
           const { name } = request.body as any;
-          await historyService.createCollection(name);
+          await this.historyService.createCollection(name);
           return reply.send({ success: true });
         } catch (error) {
           logger.error("Failed to create collection", { error });
@@ -242,7 +246,7 @@ export class SingletonHTTPServer {
         try {
           const { id } = request.params as any;
           const { collection } = request.body as any;
-          await historyService.moveDiagram(id, collection);
+          await this.historyService.moveDiagram(id, collection);
           return reply.send({ success: true });
         } catch (error) {
           logger.error("Failed to move diagram", { error });
@@ -258,7 +262,7 @@ export class SingletonHTTPServer {
           const { id } = request.params as any;
           const updates = request.body as any;
           logger.info(`Updating diagram with id: ${id}`, updates);
-          await historyService.updateDiagram(id, updates);
+          await this.historyService.updateDiagram(id, updates);
           logger.info(`Successfully updated diagram: ${id}`);
           return reply.send({ success: true });
         } catch (error) {
@@ -274,7 +278,7 @@ export class SingletonHTTPServer {
         try {
           const { id } = request.params as any;
           logger.info(`Deleting diagram with id: ${id}`);
-          await historyService.deleteDiagram(id);
+          await this.historyService.deleteDiagram(id);
           logger.info(`Successfully deleted diagram: ${id}`);
           return reply.send({ success: true });
         } catch (error) {
@@ -419,12 +423,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       'disable-analytics': {
         type: 'boolean',
         default: false
+      },
+      'data-path': {
+        type: 'string',
+        default: undefined
       }
     }
   });
   
   const port = parseInt(values.port!, 10);
-  const server = new SingletonHTTPServer(port, values['disable-analytics'] as boolean);
+  const server = new SingletonHTTPServer(port, values['disable-analytics'] as boolean, values['data-path'] as string | undefined);
 
   server.start().catch((error) => {
     logger.error("Failed to start server", { error });

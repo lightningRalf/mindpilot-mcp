@@ -7,7 +7,7 @@ export interface SearchBarProps {
   isDarkMode: boolean;
 }
 
-export function SearchBar({ value, onChange, placeholder = "Search diagrams...", isDarkMode }: SearchBarProps) {
+export function SearchBar({ value, onChange, placeholder = "Search artifacts...", isDarkMode }: SearchBarProps) {
   return (
     <div className={`border-b px-4 py-2 ${isDarkMode ? 'bg-neutral-700/30 border-neutral-700' : 'bg-neutral-100 border-neutral-200'}`}>
       <div className="relative">

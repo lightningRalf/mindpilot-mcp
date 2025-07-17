@@ -18,7 +18,7 @@ export const DiagramRenderer = forwardRef<HTMLDivElement, DiagramRendererProps>(
     mermaid.initialize({
       startOnLoad: false,
       theme: "default",
-      securityLevel: "loose",
+      securityLevel: "strict",
       flowchart: {
         useMaxWidth: false,
         htmlLabels: true,
@@ -48,7 +48,7 @@ export const DiagramRenderer = forwardRef<HTMLDivElement, DiagramRendererProps>(
         mermaid.initialize({
           startOnLoad: false,
           theme: isDarkMode ? "dark" : "default",
-          securityLevel: "loose",
+          securityLevel: "strict",
           suppressErrorRendering: true,
           flowchart: {
             useMaxWidth: false,

@@ -9,9 +9,16 @@ export class HistoryService {
   private baseDir: string;
   private dataDir: string;
 
-  constructor() {
-    this.baseDir = path.join(os.homedir(), '.mindpilot');
-    this.dataDir = path.join(this.baseDir, 'data');
+  constructor(customDataPath?: string) {
+    if (customDataPath) {
+      // Use custom data path directly
+      this.baseDir = customDataPath;
+      this.dataDir = customDataPath;
+    } else {
+      // Use default path
+      this.baseDir = path.join(os.homedir(), '.mindpilot');
+      this.dataDir = path.join(this.baseDir, 'data');
+    }
   }
 
   /**
@@ -210,5 +217,4 @@ export class HistoryService {
   }
 }
 
-// Singleton instance
-export const historyService = new HistoryService();
+// Already exported as a named export in the class declaration

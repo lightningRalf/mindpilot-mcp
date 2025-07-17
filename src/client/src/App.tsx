@@ -38,7 +38,6 @@ export function App() {
     hasManuallyZoomed,
     handleZoomIn,
     handleZoomOut,
-    handleZoomReset,
     handleFitToScreen,
     handleMouseDown,
     handleMouseMove,
@@ -193,9 +192,9 @@ export function App() {
     {
       key: '0',
       ctrl: true,
-      description: 'Reset zoom',
+      description: 'Zoom to fit',
       ignoreInputElements: true,
-      handler: () => handleZoomReset()
+      handler: () => handleFitToScreen()
     }
   ], [isHistoryCollapsed, isEditCollapsed]);
 

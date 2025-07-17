@@ -49,15 +49,15 @@ export function DiagramList({
   }
 
   if (totalDiagrams === 0) {
-    return <div className="p-4 text-center text-sm text-neutral-500">No diagrams yet</div>;
+    return <div className="p-4 text-center text-sm text-neutral-500">No artifacts yet</div>;
   }
 
   if (groupedData.length === 0 && searchQuery) {
     return (
       <EmptyState
         icon={Search}
-        title="No diagrams found"
-        description={`No diagrams match "${searchQuery}"`}
+        title="No artifacts found"
+        description={`No artifacts match "${searchQuery}"`}
         action={{
           label: "Clear search",
           onClick: onClearSearch

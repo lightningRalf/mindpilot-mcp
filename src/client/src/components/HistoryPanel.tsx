@@ -101,9 +101,9 @@ export function HistoryPanel({
         />
       </div>
 
-      {/* Thin Banner with Saved Diagrams and Toggle */}
+      {/* Thin Banner with Saved Artifacts and Toggle */}
       <div className={`px-4 py-2 border-b text-xs flex items-center justify-between ${isDarkMode ? 'bg-neutral-700/50 text-neutral-400 border-neutral-700' : 'bg-neutral-200 text-neutral-900 border-neutral-300'}`}>
-        <span>Saved Diagrams</span>
+        <span>Saved Artifacts</span>
         <div className="flex items-center gap-0.5 bg-neutral-300 dark:bg-neutral-600 p-0.5 rounded">
           <button
             onClick={() => setOrganizeByDate(false)}

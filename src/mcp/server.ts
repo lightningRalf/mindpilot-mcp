@@ -52,10 +52,12 @@ export class MindpilotMCPClient {
   private abortController: AbortController | null = null;
   private waitServerController: AbortController | null = null;
   private disableAnalytics: boolean;
+  private dataPath: string | undefined;
 
-  constructor(port: number = 4000, disableAnalytics: boolean = false) {
+  constructor(port: number = 4000, disableAnalytics: boolean = false, dataPath?: string) {
     this.httpPort = port;
     this.disableAnalytics = disableAnalytics;
+    this.dataPath = dataPath;
     this.clientId = `mcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.clientName = `MCP Client ${new Date().toLocaleTimeString()}`;
 
@@ -255,6 +257,12 @@ export class MindpilotMCPClient {
     // Pass disable-analytics flag to server if enabled
     if (this.disableAnalytics) {
       args.push("--disable-analytics");
+    }
+
+    // Pass data-path flag to server if provided
+    if (this.dataPath) {
+      args.push("--data-path");
+      args.push(this.dataPath);
     }
 
     const serverProcess = spawn("node", args, {
@@ -635,12 +643,16 @@ if (isMainModule()) {
       'disable-analytics': {
         type: 'boolean',
         default: false
+      },
+      'data-path': {
+        type: 'string',
+        default: undefined
       }
     }
   });
   
   const port = parseInt(values.port!, 10);
-  const client = new MindpilotMCPClient(port, values['disable-analytics'] as boolean);
+  const client = new MindpilotMCPClient(port, values['disable-analytics'] as boolean, values['data-path'] as string | undefined);
 
   // Handle graceful shutdown
   const shutdown = async () => {

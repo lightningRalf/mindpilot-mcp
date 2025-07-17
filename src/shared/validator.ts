@@ -29,7 +29,7 @@ import mermaid from "mermaid";
 // Initialize mermaid once
 mermaid.initialize({
   startOnLoad: false,
-  securityLevel: "loose",
+  securityLevel: "strict",
   theme: "default",
 });
 
