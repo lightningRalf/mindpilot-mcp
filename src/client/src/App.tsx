@@ -52,7 +52,7 @@ export function App() {
 
 
   // Shared state for forcing history refresh
-  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+  const [historyRefreshTrigger] = useState(0);
 
   // Handle title change from diagram title component
   const handleTitleChange = useCallback(async (newTitle: string) => {
@@ -69,8 +69,8 @@ export function App() {
           body: JSON.stringify({ title: newTitle }),
         });
 
-        // Trigger history refresh to update the history panel
-        setHistoryRefreshTrigger(prev => prev + 1);
+        // Don't refresh history - the history panel will update its local state
+        // when it receives the title change via onCurrentDiagramTitleChange
       } catch (error) {
         console.error('Failed to update diagram title:', error);
       }
@@ -216,8 +216,8 @@ export function App() {
     <HistoryPanel
       onSelectDiagram={handleSelectDiagram}
       isDarkMode={isDarkMode}
-      isExpanded={!isHistoryCollapsed}
       currentDiagramId={currentDiagramId}
+      currentDiagramTitle={title}
       onCurrentDiagramTitleChange={setTitle}
       refreshTrigger={historyRefreshTrigger}
       initialDiagramId={urlDiagramId}

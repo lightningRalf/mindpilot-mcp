@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SearchBar, DiagramList } from './history';
 import { ModeSelector, CloudModeModal } from '@/components/common';
 import { useDiagramHistory, useExportDiagram, useAnalytics, useLocalStorage, useLocalStorageBoolean } from '@/hooks';
@@ -7,8 +7,8 @@ import { APP_VERSION } from '@/constants/app';
 export interface HistoryPanelProps {
   onSelectDiagram: (diagramId: string) => void;
   isDarkMode: boolean;
-  isExpanded?: boolean;
   currentDiagramId?: string | null;
+  currentDiagramTitle?: string | null;
   onCurrentDiagramTitleChange?: (newTitle: string) => void;
   refreshTrigger?: number;
   initialDiagramId?: string | null;
@@ -17,8 +17,8 @@ export interface HistoryPanelProps {
 export function HistoryPanel({
   onSelectDiagram,
   isDarkMode,
-  isExpanded = true,
   currentDiagramId,
+  currentDiagramTitle,
   onCurrentDiagramTitleChange,
   refreshTrigger,
   initialDiagramId
@@ -29,6 +29,7 @@ export function HistoryPanel({
   const [currentMode, setCurrentMode] = useLocalStorage<'local' | 'cloud'>('mindpilot-mcp-mode', 'local');
   const [showCloudModal, setShowCloudModal] = useState(false);
   const [shouldScrollToSelected, setShouldScrollToSelected] = useState(false);
+  const hasHandledInitialLoad = useRef(false);
 
   // Use the history hook
   const {
@@ -41,10 +42,10 @@ export function HistoryPanel({
     deleteDiagram,
     renameDiagram,
   } = useDiagramHistory({ 
-    isExpanded, 
     searchQuery, 
     organizeByDate, 
-    currentDiagramId, 
+    currentDiagramId,
+    currentDiagramTitle,
     onCurrentDiagramTitleChange,
     refreshTrigger
   });
@@ -55,9 +56,9 @@ export function HistoryPanel({
   // Use analytics
   const { trackDiagramSelected, trackDiagramExported, trackDiagramDeleted } = useAnalytics();
 
-  // Handle initial diagram selection from URL
+  // Handle initial diagram selection from URL - only once
   useEffect(() => {
-    if (initialDiagramId && !loading && groupedHistory.length > 0) {
+    if (initialDiagramId && !loading && groupedHistory.length > 0 && !hasHandledInitialLoad.current) {
       // Check if the diagram exists in history
       const diagramExists = groupedHistory.some(([_, diagrams]) => 
         diagrams.some(d => d.id === initialDiagramId)
@@ -65,16 +66,20 @@ export function HistoryPanel({
       
       if (diagramExists) {
         console.log('[HistoryPanel] Auto-selecting diagram from URL:', initialDiagramId);
+        // Mark that we've handled the initial load
+        hasHandledInitialLoad.current = true;
+        
         // Always trigger selection for URL diagrams, even if already selected
         // This ensures the diagram content is loaded
         onSelectDiagram(initialDiagramId);
+        
         // Enable scrolling for URL-loaded diagrams
         setShouldScrollToSelected(true);
         // Disable scrolling after a short delay
         setTimeout(() => setShouldScrollToSelected(false), 1000);
       }
     }
-  }, [initialDiagramId, loading, groupedHistory]); // Remove currentDiagramId and onSelectDiagram from deps
+  }, [initialDiagramId, loading, groupedHistory, onSelectDiagram]);
 
   const handleModeChange = (mode: 'local' | 'cloud') => {
     if (mode === 'cloud') {

@@ -11,25 +11,33 @@ export interface DiagramHistoryEntry {
 }
 
 export interface UseDiagramHistoryOptions {
-  isExpanded?: boolean;
   searchQuery: string;
   organizeByDate: boolean;
   currentDiagramId?: string | null;
+  currentDiagramTitle?: string | null;
   onCurrentDiagramTitleChange?: (newTitle: string) => void;
   refreshTrigger?: number;
 }
 
-export function useDiagramHistory({ isExpanded = true, searchQuery, organizeByDate, currentDiagramId, onCurrentDiagramTitleChange, refreshTrigger }: UseDiagramHistoryOptions) {
+export function useDiagramHistory({ searchQuery, organizeByDate, currentDiagramId, currentDiagramTitle, onCurrentDiagramTitleChange, refreshTrigger }: UseDiagramHistoryOptions) {
   const [history, setHistory] = useState<DiagramHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set(['Today']));
 
-  // Fetch history when expanded or refresh trigger changes
+  // Always fetch history data, regardless of panel state
+  // This ensures diagram loading works even when panel is closed
   useEffect(() => {
-    if (isExpanded) {
-      fetchHistory();
+    fetchHistory();
+  }, [refreshTrigger]);
+
+  // Update local history when current diagram title changes from outside
+  useEffect(() => {
+    if (currentDiagramId && currentDiagramTitle) {
+      setHistory(prev => prev.map(h => 
+        h.id === currentDiagramId ? { ...h, title: currentDiagramTitle } : h
+      ));
     }
-  }, [isExpanded, refreshTrigger]);
+  }, [currentDiagramId, currentDiagramTitle]);
 
   const fetchHistory = async () => {
     try {
