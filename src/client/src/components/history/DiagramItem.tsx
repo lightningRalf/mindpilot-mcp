@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { InlineEdit, InlineEditRef } from '@/components/ui/InlineEdit';
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 
 export interface DiagramHistoryEntry {
   id: string;
@@ -29,6 +29,7 @@ export interface DiagramItemProps {
   onRename: (entry: DiagramHistoryEntry, newTitle: string) => void;
   openDropdownId: string | null;
   setOpenDropdownId: (id: string | null) => void;
+  shouldScrollIntoView?: boolean;
 }
 
 export function DiagramItem({
@@ -42,8 +43,20 @@ export function DiagramItem({
   onRename,
   openDropdownId,
   setOpenDropdownId,
+  shouldScrollIntoView = false,
 }: DiagramItemProps) {
   const inlineEditRef = useRef<InlineEditRef>(null);
+  const itemRef = useRef<HTMLButtonElement>(null);
+
+  // Scroll into view when active and shouldScrollIntoView is true
+  useEffect(() => {
+    if (isActive && shouldScrollIntoView && itemRef.current) {
+      itemRef.current.scrollIntoView({
+        behavior: 'instant',
+        block: 'center',
+      });
+    }
+  }, [isActive, shouldScrollIntoView]);
 
   const handleRename = () => {
     inlineEditRef.current?.startEditing();
@@ -52,6 +65,7 @@ export function DiagramItem({
 
   return (
     <button
+      ref={itemRef}
       key={entry.id}
       onClick={() => onSelect(entry)}
       className={`w-full text-left p-2 rounded transition-colors border-l-2 group ${

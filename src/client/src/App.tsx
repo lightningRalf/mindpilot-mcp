@@ -77,20 +77,30 @@ export function App() {
     }
   }, [setTitle, currentDiagramId]);
 
-  // Check URL on initial mount only
-  useEffect(() => {
-    const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+  // Parse URL to get initial diagram ID
+  const getInitialDiagramId = () => {
+    const pathMatch = window.location.pathname.match(/^\/artifacts\/([a-zA-Z0-9-]+)$/);
+    return pathMatch ? pathMatch[1] : null;
+  };
+  
+  const [urlDiagramId] = useState(getInitialDiagramId);
 
-    if (pathMatch && pathMatch[1]) {
-      const diagramId = pathMatch[1];
-      loadDiagramById(diagramId);
-    }
-  }, []); // Empty deps - only run on mount
+  // Handle showHotkeyModal event
+  useEffect(() => {
+    const handleShowHotkeyModal = () => {
+      setShowHotkeyModal(true);
+    };
+
+    window.addEventListener('showHotkeyModal', handleShowHotkeyModal);
+    return () => {
+      window.removeEventListener('showHotkeyModal', handleShowHotkeyModal);
+    };
+  }, []);
 
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+      const pathMatch = window.location.pathname.match(/^\/artifacts\/([a-zA-Z0-9-]+)$/);
 
       if (pathMatch && pathMatch[1]) {
         const diagramId = pathMatch[1];
@@ -112,11 +122,11 @@ export function App() {
 
   // Update URL when diagram selection changes
   const updateUrlForDiagram = useCallback((diagramId: string | null) => {
-    const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+    const pathMatch = window.location.pathname.match(/^\/artifacts\/([a-zA-Z0-9-]+)$/);
     const currentUrlId = pathMatch ? pathMatch[1] : null;
 
     if (diagramId && diagramId !== currentUrlId) {
-      window.history.pushState({}, '', `/artifact/${diagramId}`);
+      window.history.pushState({}, '', `/artifacts/${diagramId}`);
     } else if (!diagramId && window.location.pathname !== '/') {
       window.history.pushState({}, '', '/');
     }
@@ -210,6 +220,7 @@ export function App() {
       currentDiagramId={currentDiagramId}
       onCurrentDiagramTitleChange={setTitle}
       refreshTrigger={historyRefreshTrigger}
+      initialDiagramId={urlDiagramId}
     />
   );
 

@@ -87,9 +87,9 @@ export class SingletonHTTPServer {
           },
         );
 
-        // Handle /artifact/:id route for direct diagram access
+        // Handle /artifacts/:id route for direct diagram access
         this.fastify.get(
-          "/artifact/:id",
+          "/artifacts/:id",
           async (request: FastifyRequest, reply: FastifyReply) => {
             return reply.sendFile("index.html");
           },
@@ -292,7 +292,7 @@ export class SingletonHTTPServer {
       ? `http://localhost:${this.port}`
       : `http://localhost:5173`;
     
-    const url = diagramId ? `${baseUrl}/artifact/${diagramId}` : baseUrl;
+    const url = diagramId ? `${baseUrl}/artifacts/${diagramId}` : baseUrl;
 
     try {
       await open(url);

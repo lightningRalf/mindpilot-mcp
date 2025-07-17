@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SearchBar, DiagramList } from './history';
 import { ModeSelector, CloudModeModal } from '@/components/common';
-import { useDiagramHistory, useExportDiagram, useAnalytics, useLocalStorage } from '@/hooks';
+import { useDiagramHistory, useExportDiagram, useAnalytics, useLocalStorage, useLocalStorageBoolean } from '@/hooks';
 import { APP_VERSION } from '@/constants/app';
 
 export interface HistoryPanelProps {
@@ -11,6 +11,7 @@ export interface HistoryPanelProps {
   currentDiagramId?: string | null;
   onCurrentDiagramTitleChange?: (newTitle: string) => void;
   refreshTrigger?: number;
+  initialDiagramId?: string | null;
 }
 
 export function HistoryPanel({
@@ -19,13 +20,15 @@ export function HistoryPanel({
   isExpanded = true,
   currentDiagramId,
   onCurrentDiagramTitleChange,
-  refreshTrigger
+  refreshTrigger,
+  initialDiagramId
 }: HistoryPanelProps) {
-  const [organizeByDate, setOrganizeByDate] = useState(true);
+  const [organizeByDate, setOrganizeByDate] = useLocalStorageBoolean('mindpilot-mcp-organize-by-date', true);
   const [searchQuery, setSearchQuery] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [currentMode, setCurrentMode] = useLocalStorage<'local' | 'cloud'>('mindpilot-mcp-mode', 'local');
   const [showCloudModal, setShowCloudModal] = useState(false);
+  const [shouldScrollToSelected, setShouldScrollToSelected] = useState(false);
 
   // Use the history hook
   const {
@@ -51,6 +54,27 @@ export function HistoryPanel({
   
   // Use analytics
   const { trackDiagramSelected, trackDiagramExported, trackDiagramDeleted } = useAnalytics();
+
+  // Handle initial diagram selection from URL
+  useEffect(() => {
+    if (initialDiagramId && !loading && groupedHistory.length > 0) {
+      // Check if the diagram exists in history
+      const diagramExists = groupedHistory.some(([_, diagrams]) => 
+        diagrams.some(d => d.id === initialDiagramId)
+      );
+      
+      if (diagramExists) {
+        console.log('[HistoryPanel] Auto-selecting diagram from URL:', initialDiagramId);
+        // Always trigger selection for URL diagrams, even if already selected
+        // This ensures the diagram content is loaded
+        onSelectDiagram(initialDiagramId);
+        // Enable scrolling for URL-loaded diagrams
+        setShouldScrollToSelected(true);
+        // Disable scrolling after a short delay
+        setTimeout(() => setShouldScrollToSelected(false), 1000);
+      }
+    }
+  }, [initialDiagramId, loading, groupedHistory]); // Remove currentDiagramId and onSelectDiagram from deps
 
   const handleModeChange = (mode: 'local' | 'cloud') => {
     if (mode === 'cloud') {
@@ -128,6 +152,7 @@ export function HistoryPanel({
           openDropdownId={openDropdownId}
           formatDate={formatDate}
           onToggleCollection={toggleCollection}
+          shouldScrollToSelected={shouldScrollToSelected}
           onSelectDiagram={(entry) => {
             onSelectDiagram(entry.id);
             trackDiagramSelected({ 
@@ -154,14 +179,22 @@ export function HistoryPanel({
         className={`p-2 text-xs border-t flex items-center justify-between ${isDarkMode ? "text-neutral-400 border-neutral-700" : "text-muted-foreground border-neutral-300"}`}
       >
         <span>Mindpilot MCP v{APP_VERSION}</span>
-        <a
-          href="https://github.com/abrinsmead/mindpilot-mcp/issues"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`hover:underline ${isDarkMode ? "text-neutral-400 hover:text-neutral-300" : "text-muted-foreground hover:text-neutral-600"}`}
-        >
-          Feedback
-        </a>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('showHotkeyModal'))}
+            className={`hover:underline ${isDarkMode ? "text-neutral-400 hover:text-neutral-300" : "text-muted-foreground hover:text-neutral-600"}`}
+          >
+            Shortcuts
+          </button>
+          <a
+            href="https://github.com/abrinsmead/mindpilot-mcp/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`hover:underline ${isDarkMode ? "text-neutral-400 hover:text-neutral-300" : "text-muted-foreground hover:text-neutral-600"}`}
+          >
+            Feedback
+          </a>
+        </div>
       </div>
 
       {/* Cloud Mode Modal */}

@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { useLocalStorageString } from '@/hooks/useLocalStorage';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 export interface DiagramContextValue {
   // State
@@ -28,20 +27,12 @@ export interface DiagramProviderProps {
 }
 
 export function DiagramProvider({ children }: DiagramProviderProps) {
-  // Check if we're loading from an artifact URL - if so, don't use localStorage initially
-  const pathMatch = window.location.pathname.match(/^\/artifact\/([a-zA-Z0-9-]+)$/);
+  // Check if we're loading from an artifacts URL
+  const pathMatch = window.location.pathname.match(/^\/artifacts\/([a-zA-Z0-9-]+)$/);
   const urlDiagramId = pathMatch ? pathMatch[1] : null;
   
-  // Store just the diagram ID in localStorage
-  const [currentDiagramId, setCurrentDiagramId] = useLocalStorageString(
-    'mindpilot-mcp-current-diagram-id', 
-    urlDiagramId // Use URL ID if present, otherwise null
-  );
-  
-  console.log('[DiagramContext] Initial currentDiagramId:', currentDiagramId, 'from URL:', urlDiagramId);
-  console.log('[DiagramContext] Raw localStorage value:', localStorage.getItem('mindpilot-mcp-current-diagram-id'));
-  
-  // These are still in memory but not persisted individually
+  // Simple state - no localStorage
+  const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(urlDiagramId);
   const [diagram, setDiagram] = useState('');
   const [title, setTitle] = useState('');
   const [collection, setCollection] = useState<string | null>(null);
@@ -78,25 +69,8 @@ export function DiagramProvider({ children }: DiagramProviderProps) {
     } finally {
       setIsLoadingDiagram(false);
     }
-  }, [setCurrentDiagramId]);
+  }, []);
 
-  // Track if we've loaded the initial diagram
-  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
-
-  // Load initial diagram if ID exists (but not if we're loading from URL)
-  useEffect(() => {
-    // Skip auto-load if we have a URL diagram ID - App.tsx will handle it
-    if (urlDiagramId) {
-      setHasLoadedInitial(true);
-      return;
-    }
-    
-    if (currentDiagramId && !hasLoadedInitial) {
-      console.log('[DiagramContext] Loading diagram from localStorage ID:', currentDiagramId);
-      loadDiagramById(currentDiagramId);
-      setHasLoadedInitial(true);
-    }
-  }, [currentDiagramId, hasLoadedInitial, loadDiagramById, urlDiagramId]); // React to ID changes
 
   // Convenience method to update diagram, title, and collection
   const updateDiagram = useCallback((newDiagram: string, newTitle?: string, newCollection?: string | null) => {
@@ -104,7 +78,6 @@ export function DiagramProvider({ children }: DiagramProviderProps) {
     if (newDiagram !== diagram) {
       setDiagram(newDiagram);
       // Clear the ID when updating from MCP since it's not from history
-      console.log('[DiagramContext] Clearing currentDiagramId because diagram changed from MCP');
       setCurrentDiagramId(null);
     }
     if (newTitle !== undefined) {

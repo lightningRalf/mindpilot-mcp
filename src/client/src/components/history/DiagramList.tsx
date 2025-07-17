@@ -21,6 +21,7 @@ export interface DiagramListProps {
   onRenameDiagram: (entry: DiagramHistoryEntry, newTitle: string) => void;
   setOpenDropdownId: (id: string | null) => void;
   onClearSearch: () => void;
+  shouldScrollToSelected?: boolean;
 }
 
 export function DiagramList({
@@ -41,6 +42,7 @@ export function DiagramList({
   onRenameDiagram,
   setOpenDropdownId,
   onClearSearch,
+  shouldScrollToSelected = false,
 }: DiagramListProps) {
   if (loading) {
     return <div className="p-4 text-center text-sm text-neutral-500">Loading...</div>;
@@ -108,6 +110,7 @@ export function DiagramList({
                   onRename={onRenameDiagram}
                   openDropdownId={openDropdownId}
                   setOpenDropdownId={setOpenDropdownId}
+                  shouldScrollIntoView={shouldScrollToSelected && currentDiagramId === entry.id}
                 />
               ))}
             </div>
