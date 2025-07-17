@@ -16,7 +16,7 @@ export interface DiagramListProps {
   formatDate: (dateString: string) => string;
   onToggleCollection: (collection: string) => void;
   onSelectDiagram: (entry: DiagramHistoryEntry) => void;
-  onDownloadDiagram: (entry: DiagramHistoryEntry) => void;
+  onExportDiagram: (entry: DiagramHistoryEntry, format: 'png' | 'svg' | 'mermaid') => void;
   onDeleteDiagram: (entry: DiagramHistoryEntry) => void;
   onRenameDiagram: (entry: DiagramHistoryEntry, newTitle: string) => void;
   setOpenDropdownId: (id: string | null) => void;
@@ -37,7 +37,7 @@ export function DiagramList({
   formatDate,
   onToggleCollection,
   onSelectDiagram,
-  onDownloadDiagram,
+  onExportDiagram,
   onDeleteDiagram,
   onRenameDiagram,
   setOpenDropdownId,
@@ -105,7 +105,7 @@ export function DiagramList({
                   isDarkMode={isDarkMode}
                   formatDate={formatDate}
                   onSelect={onSelectDiagram}
-                  onDownload={onDownloadDiagram}
+                  onExport={onExportDiagram}
                   onDelete={onDeleteDiagram}
                   onRename={onRenameDiagram}
                   openDropdownId={openDropdownId}

@@ -31,7 +31,7 @@ export function useAnalytics() {
   };
 
   const trackDiagramExported = (properties: {
-    format: 'png' | 'svg';
+    format: 'png' | 'svg' | 'mermaid';
   }) => {
     trackEvent('diagram_exported', properties);
   };

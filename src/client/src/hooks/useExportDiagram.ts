@@ -155,5 +155,86 @@ export function useExportDiagram({ isDarkMode }: ExportDiagramOptions) {
     }
   }, [isDarkMode]);
 
-  return { exportAsPng };
+  const exportAsSvg = useCallback(async (diagram: string, title: string) => {
+    try {
+      // Initialize mermaid with appropriate theme
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: isDarkMode ? 'dark' : 'default',
+        securityLevel: 'strict',
+        suppressErrorRendering: true,
+        flowchart: {
+          useMaxWidth: false,
+          htmlLabels: true,
+        },
+      });
+
+      // Generate unique ID for rendering
+      const id = `mermaid-export-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create a temporary container for rendering
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      try {
+        // Render the diagram
+        const { svg } = await mermaid.render(id, diagram);
+        tempDiv.innerHTML = svg;
+
+        // Get the SVG element
+        const svgElement = tempDiv.querySelector('svg');
+        if (!svgElement) {
+          throw new Error('Failed to render diagram');
+        }
+
+        // Set background color on SVG
+        svgElement.style.backgroundColor = isDarkMode ? '#1f2937' : '#ffffff';
+
+        // Convert SVG to string
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        // Download SVG
+        const a = document.createElement('a');
+        a.href = svgUrl;
+        a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(svgUrl);
+      } finally {
+        // Cleanup
+        document.body.removeChild(tempDiv);
+      }
+    } catch (error) {
+      console.error('Failed to export diagram:', error);
+      alert('Failed to export diagram');
+    }
+  }, [isDarkMode]);
+
+  const exportAsMermaid = useCallback((diagram: string, title: string) => {
+    try {
+      // Create a blob with the Mermaid diagram text
+      const blob = new Blob([diagram], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      // Download the file
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mmd`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export Mermaid diagram:', error);
+      alert('Failed to export Mermaid diagram');
+    }
+  }, []);
+
+  return { exportAsPng, exportAsSvg, exportAsMermaid };
 }

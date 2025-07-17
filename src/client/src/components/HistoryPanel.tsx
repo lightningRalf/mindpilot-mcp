@@ -51,7 +51,7 @@ export function HistoryPanel({
   });
 
   // Use the export hook
-  const { exportAsPng } = useExportDiagram({ isDarkMode });
+  const { exportAsPng, exportAsSvg, exportAsMermaid } = useExportDiagram({ isDarkMode });
   
   // Use analytics
   const { trackDiagramSelected, trackDiagramExported, trackDiagramDeleted } = useAnalytics();
@@ -165,9 +165,19 @@ export function HistoryPanel({
               organizedBy: organizeByDate ? 'date' : 'project' 
             });
           }}
-          onDownloadDiagram={(entry) => {
-            exportAsPng(entry.diagram, entry.title);
-            trackDiagramExported({ format: 'png' });
+          onExportDiagram={(entry, format) => {
+            switch (format) {
+              case 'png':
+                exportAsPng(entry.diagram, entry.title);
+                break;
+              case 'svg':
+                exportAsSvg(entry.diagram, entry.title);
+                break;
+              case 'mermaid':
+                exportAsMermaid(entry.diagram, entry.title);
+                break;
+            }
+            trackDiagramExported({ format });
           }}
           onDeleteDiagram={(entry) => {
             deleteDiagram(entry);
