@@ -13,7 +13,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 
 export function App() {
   // Get state from contexts
-  const { diagram, setDiagram, setTitle, title, collection, setCollection, currentDiagramId, setCurrentDiagramId, loadDiagramById } = useDiagramContext();
+  const { diagram, setDiagram, setTitle, title, collection, setCollection, currentDiagramId, setCurrentDiagramId, loadDiagramById, status, setStatus } = useDiagramContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
 
@@ -28,6 +28,7 @@ export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
   const historyPanelRef = useRef<any>(null);
+  const saveDiagramTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use the pan/zoom hook
   const {
@@ -75,6 +76,39 @@ export function App() {
       }
     }
   }, [setTitle, currentDiagramId]);
+
+  // Handle diagram content change with auto-save
+  const handleDiagramChange = useCallback((newDiagram: string) => {
+    setDiagram(newDiagram);
+    
+    // If we have a current diagram ID, save the content after a delay
+    if (currentDiagramId && newDiagram.trim()) {
+      // Debounce the save operation
+      if (saveDiagramTimeoutRef.current) {
+        clearTimeout(saveDiagramTimeoutRef.current);
+      }
+      
+      saveDiagramTimeoutRef.current = setTimeout(async () => {
+        try {
+          setStatus('Saving...');
+          await fetch(`/api/history/${currentDiagramId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ diagram: newDiagram }),
+          });
+          console.log('[App] Saved diagram content for ID:', currentDiagramId);
+          setStatus('Saved');
+          // Clear saved status after 2 seconds
+          setTimeout(() => setStatus('Ready'), 2000);
+        } catch (error) {
+          console.error('Failed to update diagram content:', error);
+          setStatus('Save failed');
+        }
+      }, 2000); // Save after 2 seconds of inactivity
+    }
+  }, [setDiagram, currentDiagramId, setStatus]);
 
   // Parse URL to get initial diagram ID
   const getInitialDiagramId = () => {
@@ -287,7 +321,7 @@ export function App() {
       <div className={`flex-1 p-4 ${isDarkMode ? "bg-neutral-800" : "bg-neutral-50"}`}>
         <MermaidEditor
           value={diagram}
-          onChange={setDiagram}
+          onChange={handleDiagramChange}
           isDarkMode={isDarkMode}
         />
       </div>
