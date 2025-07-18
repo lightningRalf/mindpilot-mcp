@@ -25,7 +25,7 @@ export function ModeSelector({ isDarkMode, currentMode, onModeChange }: ModeSele
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-2 px-3 h-8 rounded text-sm font-medium transition-colors ${
+          className={`invisible flex items-center gap-2 px-3 h-8 rounded text-sm font-medium transition-colors ${
             isDarkMode
               ? 'hover:bg-neutral-700 text-neutral-200'
               : 'hover:bg-neutral-100 text-neutral-700'

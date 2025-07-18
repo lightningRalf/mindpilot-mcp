@@ -73,7 +73,7 @@ export function DiagramItem({
       ref={itemRef}
       key={entry.id}
       onClick={() => onSelect(entry)}
-      className={`w-full text-left p-2 rounded transition-colors border-l-2 group ${
+      className={`w-full text-left p-2 rounded transition-colors border-l-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
         isActive
           ? isDarkMode
             ? 'bg-orange-500/20 border-orange-500'
@@ -81,7 +81,7 @@ export function DiagramItem({
           : isDarkMode
             ? 'hover:bg-orange-500/5 active:bg-orange-500/10 border-transparent'
             : 'hover:bg-orange-50 active:bg-orange-100 border-transparent'
-      }`}
+      } ${isDarkMode ? 'focus-visible:ring-offset-neutral-800' : 'focus-visible:ring-offset-white'}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

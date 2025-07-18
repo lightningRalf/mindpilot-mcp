@@ -181,6 +181,11 @@ export function App() {
     const currentIndex = orderedDiagramIds.indexOf(currentDiagramId);
     if (currentIndex === -1) return;
     
+    // Blur any currently focused element to remove focus rings
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    
     // Move to next diagram, wrap around to beginning
     const nextIndex = (currentIndex + 1) % orderedDiagramIds.length;
     const nextDiagramId = orderedDiagramIds[nextIndex];
@@ -193,6 +198,11 @@ export function App() {
     
     const currentIndex = orderedDiagramIds.indexOf(currentDiagramId);
     if (currentIndex === -1) return;
+    
+    // Blur any currently focused element to remove focus rings
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     
     // Move to previous diagram, wrap around to end
     const prevIndex = currentIndex === 0 ? orderedDiagramIds.length - 1 : currentIndex - 1;
