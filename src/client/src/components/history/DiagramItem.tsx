@@ -33,6 +33,7 @@ export interface DiagramItemProps {
   openDropdownId: string | null;
   setOpenDropdownId: (id: string | null) => void;
   shouldScrollIntoView?: boolean;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 export function DiagramItem({
@@ -47,6 +48,7 @@ export function DiagramItem({
   openDropdownId,
   setOpenDropdownId,
   shouldScrollIntoView = false,
+  onEditingChange,
 }: DiagramItemProps) {
   const inlineEditRef = useRef<InlineEditRef>(null);
   const itemRef = useRef<HTMLButtonElement>(null);
@@ -87,6 +89,7 @@ export function DiagramItem({
             ref={inlineEditRef}
             value={entry.title}
             onSave={(newTitle) => onRename(entry, newTitle)}
+            onEditingChange={onEditingChange}
             className={`text-sm font-medium text-left truncate ${
               isActive
                 ? isDarkMode ? 'text-orange-300' : 'text-orange-700'

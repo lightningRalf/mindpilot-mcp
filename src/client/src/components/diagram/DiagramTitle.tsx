@@ -6,9 +6,10 @@ interface DiagramTitleProps {
   isDarkMode: boolean;
   onTitleChange?: (newTitle: string) => void;
   isEditable?: boolean;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
-export function DiagramTitle({ title, collection, isDarkMode, onTitleChange, isEditable = false }: DiagramTitleProps) {
+export function DiagramTitle({ title, collection, isDarkMode, onTitleChange, isEditable = false, onEditingChange }: DiagramTitleProps) {
   if (!title) return null;
 
   return (
@@ -23,6 +24,7 @@ export function DiagramTitle({ title, collection, isDarkMode, onTitleChange, isE
           <InlineEdit
             value={title}
             onSave={onTitleChange}
+            onEditingChange={onEditingChange}
             className={`text-lg text-center ${isDarkMode ? "text-neutral-200" : "text-neutral-600"}`}
             editClassName={`px-2 py-1 rounded ${isDarkMode ? "bg-neutral-800/80 ring-2 ring-orange-500/50" : "bg-white/80 ring-2 ring-orange-400/50"}`}
             placeholder="Untitled Diagram"

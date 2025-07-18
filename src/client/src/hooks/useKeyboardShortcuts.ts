@@ -11,6 +11,10 @@ export interface KeyboardShortcut {
   preventDefault?: boolean;
   // Only trigger if target is not an input element
   ignoreInputElements?: boolean;
+  // Case sensitive matching (default: false)
+  caseSensitive?: boolean;
+  // Custom condition to enable/disable the shortcut
+  isEnabled?: () => boolean;
 }
 
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
@@ -26,6 +30,11 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
       const activeShortcuts = shortcutsRef.current;
       
       for (const shortcut of activeShortcuts) {
+        // Check if shortcut is enabled
+        if (shortcut.isEnabled && !shortcut.isEnabled()) {
+          continue;
+        }
+
         // Skip if we should ignore input elements and target is an input
         if (shortcut.ignoreInputElements) {
           const target = event.target as HTMLElement;
@@ -40,7 +49,11 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
         }
 
         // Check if key matches
-        if (event.key.toLowerCase() !== shortcut.key.toLowerCase()) {
+        const keyMatches = shortcut.caseSensitive 
+          ? event.key === shortcut.key
+          : event.key.toLowerCase() === shortcut.key.toLowerCase();
+        
+        if (!keyMatches) {
           continue;
         }
 

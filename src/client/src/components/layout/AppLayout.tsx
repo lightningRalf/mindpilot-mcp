@@ -123,7 +123,7 @@ export function AppLayout({
               }
             }}
             className="h-8 w-8 group"
-            title={isHistoryCollapsed ? "Show history panel (⌘B)" : "Hide history panel (⌘B)"}
+            title={isHistoryCollapsed ? "Show history panel (H)" : "Hide history panel (H)"}
           >
             {isHistoryCollapsed ? (
               <PanelLeft className="h-4 w-4" />
@@ -143,7 +143,7 @@ export function AppLayout({
                 editPanelRef.current?.expand();
               }}
               className="h-8 w-8 group"
-              title="Show editor (⌘E)"
+              title="Show editor (E)"
             >
               <Pencil className="h-4 w-4" />
             </Button>

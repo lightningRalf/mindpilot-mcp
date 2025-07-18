@@ -22,6 +22,7 @@ export interface DiagramListProps {
   setOpenDropdownId: (id: string | null) => void;
   onClearSearch: () => void;
   shouldScrollToSelected?: boolean;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 export function DiagramList({
@@ -43,6 +44,7 @@ export function DiagramList({
   setOpenDropdownId,
   onClearSearch,
   shouldScrollToSelected = false,
+  onEditingChange,
 }: DiagramListProps) {
   if (loading) {
     return <div className="p-4 text-center text-sm text-neutral-500">Loading...</div>;
@@ -111,6 +113,7 @@ export function DiagramList({
                   openDropdownId={openDropdownId}
                   setOpenDropdownId={setOpenDropdownId}
                   shouldScrollIntoView={shouldScrollToSelected && currentDiagramId === entry.id}
+                  onEditingChange={onEditingChange}
                 />
               ))}
             </div>

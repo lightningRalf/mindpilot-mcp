@@ -36,11 +36,11 @@ export function CloudModeModal({ isOpen, onClose, isDarkMode }: CloudModeModalPr
           <div className="flex items-center gap-3">
             <Cloud className={isDarkMode ? "h-6 w-6 text-orange-400" : "h-6 w-6 text-orange-500"} />
             <DialogTitle className={isDarkMode ? "text-neutral-100" : "text-neutral-900"}>
-              Cloud Mode Is Not Real
+              Team Mode Does Not Exist
             </DialogTitle>
           </div>
           <DialogDescription className={isDarkMode ? "text-neutral-400" : "text-neutral-600"}>
-            We're exploring a cloud version of Mindpilot with team collaboration features. Would this interest you?
+            Should it?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex gap-2">

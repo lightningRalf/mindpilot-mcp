@@ -24,6 +24,9 @@ export function App() {
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useLocalStorageBoolean("mindpilot-mcp-history-collapsed", false);
   const [historyPanelSize, setHistoryPanelSize] = useLocalStorageNumber("mindpilot-mcp-history-panel-size", 20);
   const [showHotkeyModal, setShowHotkeyModal] = useState(false);
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [orderedDiagramIds, setOrderedDiagramIds] = useState<string[]>([]);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
@@ -171,66 +174,122 @@ export function App() {
     updateUrlForDiagram(diagramId);
   }, [loadDiagramById, updateUrlForDiagram]);
 
+  // Navigation between diagrams
+  const navigateToNextDiagram = useCallback(() => {
+    if (!currentDiagramId || orderedDiagramIds.length === 0) return;
+    
+    const currentIndex = orderedDiagramIds.indexOf(currentDiagramId);
+    if (currentIndex === -1) return;
+    
+    // Move to next diagram, wrap around to beginning
+    const nextIndex = (currentIndex + 1) % orderedDiagramIds.length;
+    const nextDiagramId = orderedDiagramIds[nextIndex];
+    
+    handleSelectDiagram(nextDiagramId);
+  }, [currentDiagramId, orderedDiagramIds, handleSelectDiagram]);
+
+  const navigateToPreviousDiagram = useCallback(() => {
+    if (!currentDiagramId || orderedDiagramIds.length === 0) return;
+    
+    const currentIndex = orderedDiagramIds.indexOf(currentDiagramId);
+    if (currentIndex === -1) return;
+    
+    // Move to previous diagram, wrap around to end
+    const prevIndex = currentIndex === 0 ? orderedDiagramIds.length - 1 : currentIndex - 1;
+    const prevDiagramId = orderedDiagramIds[prevIndex];
+    
+    handleSelectDiagram(prevDiagramId);
+  }, [currentDiagramId, orderedDiagramIds, handleSelectDiagram]);
+
   // Keyboard shortcuts
-  const shortcuts = useMemo<KeyboardShortcut[]>(() => [
-    {
-      key: 'b',
-      ctrl: true,
-      description: 'Toggle history panel',
-      handler: () => {
-        if (isHistoryCollapsed) {
-          historyPanelRef.current?.expand();
-        } else {
-          historyPanelRef.current?.collapse();
+  const shortcuts = useMemo<KeyboardShortcut[]>(() => {
+    const baseShortcuts: KeyboardShortcut[] = [
+      // Mode toggle
+      {
+        key: 'd',
+        description: 'Toggle dark/light mode',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => {
+          toggleTheme();
+          trackThemeChanged({ theme: isDarkMode ? 'light' : 'dark' });
         }
-      }
-    },
-    {
-      key: 'e',
-      ctrl: true,
-      description: 'Toggle edit panel',
-      handler: () => {
-        if (isEditCollapsed) {
-          editPanelRef.current?.expand();
-        } else {
-          editPanelRef.current?.collapse();
+      },
+      // Panel toggles
+      {
+        key: 'h',
+        description: 'Toggle history panel',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => {
+          if (isHistoryCollapsed) {
+            historyPanelRef.current?.expand();
+          } else {
+            historyPanelRef.current?.collapse();
+          }
         }
+      },
+      {
+        key: 'e',
+        description: 'Toggle editor panel',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => {
+          if (isEditCollapsed) {
+            editPanelRef.current?.expand();
+          } else {
+            editPanelRef.current?.collapse();
+          }
+        }
+      },
+      // Zoom controls
+      {
+        key: 'ArrowUp',
+        description: 'Zoom in',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleZoomIn()
+      },
+      {
+        key: 'ArrowDown',
+        description: 'Zoom out',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleZoomOut()
+      },
+      {
+        key: 'f',
+        description: 'Fit to screen',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleFitToScreen()
+      },
+      // Navigation
+      {
+        key: 'ArrowLeft',
+        description: 'Previous diagram',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => navigateToPreviousDiagram()
+      },
+      {
+        key: 'ArrowRight',
+        description: 'Next diagram',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => navigateToNextDiagram()
+      },
+      // Help
+      {
+        key: '?',
+        description: 'Show keyboard shortcuts',
+        caseSensitive: true,
+        handler: () => setShowHotkeyModal(prev => !prev)
       }
-    },
-    {
-      key: '?',
-      description: 'Show keyboard shortcuts',
-      handler: () => setShowHotkeyModal(prev => !prev)
-    },
-    {
-      key: '+',
-      ctrl: true,
-      description: 'Zoom in',
-      ignoreInputElements: true,
-      handler: () => handleZoomIn()
-    },
-    {
-      key: '=',
-      ctrl: true,
-      description: 'Zoom in',
-      ignoreInputElements: true,
-      handler: () => handleZoomIn()
-    },
-    {
-      key: '-',
-      ctrl: true,
-      description: 'Zoom out',
-      ignoreInputElements: true,
-      handler: () => handleZoomOut()
-    },
-    {
-      key: '0',
-      ctrl: true,
-      description: 'Zoom to fit',
-      ignoreInputElements: true,
-      handler: () => handleFitToScreen()
-    }
-  ], [isHistoryCollapsed, isEditCollapsed]);
+    ];
+    
+    return baseShortcuts;
+  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram]);
 
   useKeyboardShortcuts(shortcuts);
   usePreventBrowserZoom();
@@ -254,6 +313,8 @@ export function App() {
       onCurrentDiagramTitleChange={setTitle}
       refreshTrigger={historyRefreshTrigger}
       initialDiagramId={urlDiagramId}
+      onEditingChange={setIsRenaming}
+      onDiagramListChange={setOrderedDiagramIds}
     />
   );
 
@@ -266,6 +327,7 @@ export function App() {
         isDarkMode={isDarkMode}
         isEditable={true}
         onTitleChange={handleTitleChange}
+        onEditingChange={setIsRenaming}
       />
 
       <ZoomControls
@@ -308,7 +370,7 @@ export function App() {
             editPanelRef.current?.collapse();
           }}
           className="h-8 w-8 group"
-          title="Hide editor (⌘E)"
+          title="Hide editor (E)"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -323,6 +385,7 @@ export function App() {
           value={diagram}
           onChange={handleDiagramChange}
           isDarkMode={isDarkMode}
+          onFocusChange={setIsEditorFocused}
         />
       </div>
       <div className={`p-2 text-xs border-t flex justify-end ${isDarkMode ? "text-neutral-400 border-neutral-700" : "text-muted-foreground border-neutral-300"}`}>

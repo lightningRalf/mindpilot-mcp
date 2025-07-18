@@ -19,14 +19,19 @@ interface Shortcut {
 }
 
 const shortcuts: Shortcut[] = [
-  // Panel shortcuts
-  { keys: "⌘B", description: "Toggle history panel", category: "Panels" },
-  { keys: "⌘E", description: "Toggle editor panel", category: "Panels" },
+  // Theme
+  { keys: "D", description: "Toggle dark/light mode", category: "Theme" },
 
-  // Zoom shortcuts
-  { keys: "⌘+", description: "Zoom in", category: "View" },
-  { keys: "⌘-", description: "Zoom out", category: "View" },
-  { keys: "⌘0", description: "Zoom to fit", category: "View" },
+  // Panels
+  { keys: "H", description: "Toggle history panel", category: "Panels" },
+  { keys: "E", description: "Toggle editor panel", category: "Panels" },
+
+  // Navigation
+  { keys: "← →", description: "Navigate between diagrams", category: "Navigation" },
+
+  // View
+  { keys: "↑ ↓", description: "Zoom in / out", category: "View" },
+  { keys: "F", description: "Fit to screen", category: "View" },
 
   // Help
   { keys: "?", description: "Show keyboard shortcuts", category: "Help" },
@@ -76,7 +81,7 @@ export function HotkeyModal({ isOpen, onClose, isDarkMode }: HotkeyModalProps) {
                     <kbd className={`px-2 py-1 text-xs font-mono rounded ${
                       isDarkMode
                         ? 'bg-neutral-600 text-neutral-200 border border-neutral-500'
-                        : 'bg-white text-neutral-700 border border-neutral-300'
+                        : 'bg-neutral-200 text-neutral-700 border border-neutral-300'
                     }`}>
                       {shortcut.keys}
                     </kbd>
@@ -93,11 +98,11 @@ export function HotkeyModal({ isOpen, onClose, isDarkMode }: HotkeyModalProps) {
           Press <kbd className={`px-1.5 py-0.5 mx-1 font-mono rounded ${
             isDarkMode
               ? 'bg-neutral-700 text-neutral-300 border border-neutral-600'
-              : 'bg-neutral-100 text-neutral-600 border border-neutral-300'
+              : 'bg-neutral-200 text-neutral-600 border border-neutral-300'
           }`}>?</kbd> or <kbd className={`px-1.5 py-0.5 mx-1 font-mono rounded ${
             isDarkMode
               ? 'bg-neutral-700 text-neutral-300 border border-neutral-600'
-              : 'bg-neutral-100 text-neutral-600 border border-neutral-300'
+              : 'bg-neutral-200 text-neutral-600 border border-neutral-300'
           }`}>Esc</kbd> to close
         </div>
       </DialogContent>

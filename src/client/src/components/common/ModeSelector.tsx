@@ -1,4 +1,4 @@
-import { ChevronDown, HardDrive, Cloud } from 'lucide-react';
+import { ChevronDown, HardDrive, Users } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ interface ModeSelectorProps {
 export function ModeSelector({ isDarkMode, currentMode, onModeChange }: ModeSelectorProps) {
   const modes = [
     { value: 'local' as const, label: 'Local Mode', icon: HardDrive },
-    { value: 'cloud' as const, label: 'Cloud Mode', icon: Cloud },
+    { value: 'cloud' as const, label: 'Team Mode', icon: Users },
   ];
 
   const currentModeData = modes.find(mode => mode.value === currentMode);
@@ -36,10 +36,10 @@ export function ModeSelector({ isDarkMode, currentMode, onModeChange }: ModeSele
           <ChevronDown className="h-3 w-3" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
+      <DropdownMenuContent
         align="start"
-        className={isDarkMode 
-          ? "bg-neutral-800 border-neutral-700 text-neutral-100" 
+        className={isDarkMode
+          ? "bg-neutral-800 border-neutral-700 text-neutral-100"
           : "bg-white border-neutral-200 text-neutral-900"
         }
       >
@@ -56,8 +56,8 @@ export function ModeSelector({ isDarkMode, currentMode, onModeChange }: ModeSele
                     : 'bg-neutral-100 text-neutral-900'
                   : ''
               } ${
-                isDarkMode 
-                  ? "hover:bg-neutral-700 focus:bg-neutral-700" 
+                isDarkMode
+                  ? "hover:bg-neutral-700 focus:bg-neutral-700"
                   : "hover:bg-neutral-100 focus:bg-neutral-100"
               }`}
             >

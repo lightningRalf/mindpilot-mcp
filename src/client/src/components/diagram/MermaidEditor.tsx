@@ -7,9 +7,10 @@ interface MermaidEditorProps {
   value: string;
   onChange: (value: string) => void;
   isDarkMode: boolean;
+  onFocusChange?: (isFocused: boolean) => void;
 }
 
-export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProps) {
+export function MermaidEditor({ value, onChange, isDarkMode, onFocusChange }: MermaidEditorProps) {
   const monacoRef = useRef<Monaco | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const { trackDiagramUpdated } = useAnalytics();
@@ -142,6 +143,17 @@ export function MermaidEditor({ value, onChange, isDarkMode }: MermaidEditorProp
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     monacoRef.current = monaco;
     editorRef.current = editor;
+    
+    // Set up focus/blur handlers
+    if (onFocusChange) {
+      editor.onDidFocusEditorText(() => {
+        onFocusChange(true);
+      });
+      
+      editor.onDidBlurEditorText(() => {
+        onFocusChange(false);
+      });
+    }
   };
 
   const handleChange = (value: string | undefined) => {

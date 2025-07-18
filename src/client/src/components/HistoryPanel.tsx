@@ -12,6 +12,8 @@ export interface HistoryPanelProps {
   onCurrentDiagramTitleChange?: (newTitle: string) => void;
   refreshTrigger?: number;
   initialDiagramId?: string | null;
+  onEditingChange?: (isEditing: boolean) => void;
+  onDiagramListChange?: (diagrams: string[]) => void;
 }
 
 export function HistoryPanel({
@@ -21,7 +23,9 @@ export function HistoryPanel({
   currentDiagramTitle,
   onCurrentDiagramTitleChange,
   refreshTrigger,
-  initialDiagramId
+  initialDiagramId,
+  onEditingChange,
+  onDiagramListChange
 }: HistoryPanelProps) {
   const [organizeByDate, setOrganizeByDate] = useLocalStorageBoolean('mindpilot-mcp-organize-by-date', true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +59,19 @@ export function HistoryPanel({
   
   // Use analytics
   const { trackDiagramSelected, trackDiagramExported, trackDiagramDeleted } = useAnalytics();
+
+  // Extract ordered list of diagram IDs and notify parent
+  useEffect(() => {
+    if (onDiagramListChange) {
+      const orderedIds: string[] = [];
+      groupedHistory.forEach(([_, diagrams]) => {
+        diagrams.forEach(diagram => {
+          orderedIds.push(diagram.id);
+        });
+      });
+      onDiagramListChange(orderedIds);
+    }
+  }, [groupedHistory, onDiagramListChange]);
 
   // Handle initial diagram selection from URL - only once
   useEffect(() => {
@@ -186,6 +203,7 @@ export function HistoryPanel({
           onRenameDiagram={renameDiagram}
           setOpenDropdownId={setOpenDropdownId}
           onClearSearch={() => setSearchQuery('')}
+          onEditingChange={onEditingChange}
         />
       </div>
 

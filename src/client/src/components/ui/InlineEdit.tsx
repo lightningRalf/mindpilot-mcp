@@ -8,6 +8,7 @@ interface InlineEditProps {
   placeholder?: string;
   disabled?: boolean;
   requireDoubleClick?: boolean;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 export interface InlineEditRef {
@@ -21,7 +22,8 @@ export const InlineEdit = forwardRef<InlineEditRef, InlineEditProps>(function In
   editClassName = '',
   placeholder = 'Click to edit',
   disabled = false,
-  requireDoubleClick = false
+  requireDoubleClick = false,
+  onEditingChange
 }, ref) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -38,6 +40,10 @@ export const InlineEdit = forwardRef<InlineEditRef, InlineEditProps>(function In
   useEffect(() => {
     setEditValue(value);
   }, [value]);
+
+  useEffect(() => {
+    onEditingChange?.(isEditing);
+  }, [isEditing, onEditingChange]);
 
   useEffect(() => {
     if (isEditing && contentRef.current) {
