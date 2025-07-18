@@ -40,7 +40,7 @@ export function CloudModeModal({ isOpen, onClose, isDarkMode }: CloudModeModalPr
             </DialogTitle>
           </div>
           <DialogDescription className={isDarkMode ? "text-neutral-400" : "text-neutral-600"}>
-            Mindpilot doesn't have a cloud option yet. Click yes if you would like a cloud mode for saving diagrams and sharing with your team?
+            We're exploring a cloud version of Mindpilot with team collaboration features. Would this interest you?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex gap-2">
