@@ -4,11 +4,11 @@ import { ChevronRight } from "lucide-react";
 import { useDiagramContext, useThemeContext } from "@/contexts";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
-import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor } from "@/components/diagram";
+import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, DrawingCanvas } from "@/components/diagram";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
-import { useAnalytics } from "@/hooks/useAnalytics";
+import { useAnalytics, useFeatureFlag } from "@/hooks/useAnalytics";
 
 
 export function App() {
@@ -16,6 +16,7 @@ export function App() {
   const { diagram, setDiagram, setTitle, title, collection, setCollection, currentDiagramId, setCurrentDiagramId, loadDiagramById, status, setStatus } = useDiagramContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
+  const isPenToolEnabled = useFeatureFlag('pen-tool');
 
   // LocalStorage-backed state for UI preferences
   const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
@@ -27,6 +28,9 @@ export function App() {
   const [isEditorFocused, setIsEditorFocused] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [orderedDiagramIds, setOrderedDiagramIds] = useState<string[]>([]);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [hasDrawing, setHasDrawing] = useState(false);
+  const [clearDrawingTrigger, setClearDrawingTrigger] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
@@ -274,6 +278,14 @@ export function App() {
         isEnabled: () => !isEditorFocused && !isRenaming,
         handler: () => handleFitToScreen()
       },
+      // Drawing (only if feature flag is enabled)
+      ...(isPenToolEnabled ? [{
+        key: 'p',
+        description: 'Toggle pen/drawing mode',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => setIsDrawingMode(!isDrawingMode)
+      }] : []),
       // Navigation
       {
         key: 'ArrowLeft',
@@ -299,7 +311,7 @@ export function App() {
     ];
     
     return baseShortcuts;
-  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram]);
+  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram, isPenToolEnabled, isDrawingMode]);
 
   useKeyboardShortcuts(shortcuts);
   usePreventBrowserZoom();
@@ -349,6 +361,13 @@ export function App() {
           toggleTheme();
           trackThemeChanged({ theme: isDarkMode ? 'light' : 'dark' });
         }}
+        isDrawingMode={isPenToolEnabled ? isDrawingMode : undefined}
+        onToggleDrawing={isPenToolEnabled ? () => setIsDrawingMode(!isDrawingMode) : undefined}
+        hasDrawing={isPenToolEnabled ? hasDrawing : false}
+        onClearDrawing={isPenToolEnabled ? () => {
+          setClearDrawingTrigger(prev => prev + 1);
+          setHasDrawing(false);
+        } : undefined}
       />
 
       <PanZoomContainer
@@ -357,15 +376,25 @@ export function App() {
         pan={pan}
         isPanning={isPanning}
         isZooming={isZooming}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
+        isDrawingMode={isPenToolEnabled && isDrawingMode}
+        onMouseDown={isPenToolEnabled && isDrawingMode ? undefined : handleMouseDown}
+        onMouseMove={isPenToolEnabled && isDrawingMode ? undefined : handleMouseMove}
+        onMouseUp={isPenToolEnabled && isDrawingMode ? undefined : handleMouseUp}
+        onMouseLeave={isPenToolEnabled && isDrawingMode ? undefined : handleMouseLeave}
       >
         <DiagramRenderer
           ref={previewRef}
           onFitToScreen={handleDiagramFitToScreen}
         />
+        {isPenToolEnabled && (
+          <DrawingCanvas
+            isDrawingMode={isDrawingMode}
+            zoom={zoom}
+            isDarkMode={isDarkMode}
+            clearDrawingTrigger={clearDrawingTrigger}
+            onDrawingChange={setHasDrawing}
+          />
+        )}
       </PanZoomContainer>
     </div>
   );
@@ -387,7 +416,7 @@ export function App() {
       </div>
       {/* Header */}
       <div className={`relative px-4 py-6 border-b flex items-center justify-center font-medium ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-neutral-50 border-neutral-200 text-neutral-800'}`}>
-        Mermaid Editor
+        Edit Source
       </div>
 
       <div className={`flex-1 p-4 ${isDarkMode ? "bg-neutral-800" : "bg-neutral-50"}`}>
@@ -411,6 +440,7 @@ export function App() {
         isOpen={showHotkeyModal}
         onClose={() => setShowHotkeyModal(false)}
         isDarkMode={isDarkMode}
+        showPenTool={isPenToolEnabled}
       />
     </>
   );

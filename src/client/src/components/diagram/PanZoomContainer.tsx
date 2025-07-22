@@ -8,10 +8,11 @@ export interface PanZoomContainerProps {
   pan: { x: number; y: number };
   isPanning: boolean;
   isZooming: boolean;
-  onMouseDown: (e: React.MouseEvent) => void;
-  onMouseMove: (e: React.MouseEvent) => void;
-  onMouseUp: () => void;
-  onMouseLeave: () => void;
+  isDrawingMode?: boolean;
+  onMouseDown?: (e: React.MouseEvent) => void;
+  onMouseMove?: (e: React.MouseEvent) => void;
+  onMouseUp?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export const PanZoomContainer = forwardRef<HTMLDivElement, PanZoomContainerProps>(
@@ -21,6 +22,7 @@ export const PanZoomContainer = forwardRef<HTMLDivElement, PanZoomContainerProps
     pan,
     isPanning,
     isZooming,
+    isDrawingMode = false,
     onMouseDown,
     onMouseMove,
     onMouseUp,
@@ -36,7 +38,7 @@ export const PanZoomContainer = forwardRef<HTMLDivElement, PanZoomContainerProps
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
-        style={{ cursor: isPanning ? "grabbing" : "grab" }}
+        style={{ cursor: isDrawingMode ? "crosshair" : isPanning ? "grabbing" : "grab" }}
       >
         {isLoadingDiagram && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -44,7 +46,7 @@ export const PanZoomContainer = forwardRef<HTMLDivElement, PanZoomContainerProps
           </div>
         )}
         <div
-          className="w-full h-full flex items-center justify-center"
+          className="w-full h-full flex items-center justify-center relative"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "center",

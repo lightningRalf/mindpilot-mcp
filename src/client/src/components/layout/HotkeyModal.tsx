@@ -10,6 +10,7 @@ interface HotkeyModalProps {
   isOpen: boolean;
   onClose: () => void;
   isDarkMode: boolean;
+  showPenTool?: boolean;
 }
 
 interface Shortcut {
@@ -18,26 +19,36 @@ interface Shortcut {
   category: string;
 }
 
-const shortcuts: Shortcut[] = [
-  // Theme
-  { keys: "D", description: "Toggle dark/light mode", category: "Theme" },
+const getShortcuts = (showPenTool: boolean): Shortcut[] => {
+  const shortcuts: Shortcut[] = [
+    // Theme
+    { keys: "D", description: "Toggle dark/light mode", category: "Theme" },
 
-  // Panels
-  { keys: "H", description: "Toggle history panel", category: "Panels" },
-  { keys: "E", description: "Toggle editor panel", category: "Panels" },
+    // Panels
+    { keys: "H", description: "Toggle history panel", category: "Panels" },
+    { keys: "E", description: "Toggle editor panel", category: "Panels" },
 
-  // Navigation
-  { keys: "← →", description: "Navigate between diagrams", category: "Navigation" },
+    // Navigation
+    { keys: "← →", description: "Navigate between diagrams", category: "Navigation" },
 
-  // View
-  { keys: "↑ ↓", description: "Zoom in / out", category: "View" },
-  { keys: "F", description: "Fit to screen", category: "View" },
+    // View
+    { keys: "↑ ↓", description: "Zoom in / out", category: "View" },
+    { keys: "F", description: "Fit to screen", category: "View" },
+  ];
+
+  if (showPenTool) {
+    shortcuts.push({ keys: "P", description: "Toggle pen/drawing mode", category: "View" });
+  }
 
   // Help
-  { keys: "?", description: "Show keyboard shortcuts", category: "Help" },
-];
+  shortcuts.push({ keys: "?", description: "Show keyboard shortcuts", category: "Help" });
 
-export function HotkeyModal({ isOpen, onClose, isDarkMode }: HotkeyModalProps) {
+  return shortcuts;
+};
+
+export function HotkeyModal({ isOpen, onClose, isDarkMode, showPenTool = false }: HotkeyModalProps) {
+  const shortcuts = getShortcuts(showPenTool);
+  
   // Group shortcuts by category
   const groupedShortcuts = shortcuts.reduce((acc, shortcut) => {
     if (!acc[shortcut.category]) {

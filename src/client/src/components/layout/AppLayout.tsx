@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import {
-  Pencil,
+  Braces,
   PanelLeft,
   ChevronLeft,
 } from "lucide-react";
@@ -145,7 +145,7 @@ export function AppLayout({
               className="h-8 w-8 group"
               title="Show editor (E)"
             >
-              <Pencil className="h-4 w-4" />
+              <Braces className="h-4 w-4" />
             </Button>
           </div>
         )}
