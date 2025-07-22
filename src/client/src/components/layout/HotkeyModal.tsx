@@ -40,6 +40,7 @@ const getShortcuts = (showPenTool: boolean): Shortcut[] => {
     shortcuts.push({ keys: "P", description: "Toggle pen/drawing mode", category: "View" });
   }
 
+
   // Help
   shortcuts.push({ keys: "?", description: "Show keyboard shortcuts", category: "Help" });
 

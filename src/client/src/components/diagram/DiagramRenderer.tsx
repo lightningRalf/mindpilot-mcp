@@ -6,6 +6,52 @@ export interface DiagramRendererProps {
   onFitToScreen?: (isAutoResize?: boolean) => void;
 }
 
+// Function to trim whitespace from SVG
+function trimSvgWhitespace(svgElement: SVGSVGElement) {
+  // Get all visible elements
+  const visibleElements = svgElement.querySelectorAll('*:not(defs):not(style):not(title):not(desc)');
+  
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  
+  // Calculate the bounding box of all visible content
+  visibleElements.forEach((element) => {
+    try {
+      if (element instanceof SVGGraphicsElement && element.getBBox) {
+        const bbox = element.getBBox();
+        if (bbox.width > 0 && bbox.height > 0) {
+          minX = Math.min(minX, bbox.x);
+          minY = Math.min(minY, bbox.y);
+          maxX = Math.max(maxX, bbox.x + bbox.width);
+          maxY = Math.max(maxY, bbox.y + bbox.height);
+        }
+      }
+    } catch (e) {
+      // Some elements might not support getBBox
+    }
+  });
+  
+  // Add some padding
+  const padding = 20;
+  minX -= padding;
+  minY -= padding;
+  maxX += padding;
+  maxY += padding;
+  
+  // Calculate new dimensions
+  const width = maxX - minX;
+  const height = maxY - minY;
+  
+  // Update the viewBox and dimensions
+  if (width > 0 && height > 0 && isFinite(minX) && isFinite(minY)) {
+    svgElement.setAttribute('viewBox', `${minX} ${minY} ${width} ${height}`);
+    svgElement.setAttribute('width', String(width));
+    svgElement.setAttribute('height', String(height));
+  }
+}
+
 export const DiagramRenderer = forwardRef<HTMLDivElement, DiagramRendererProps>(
   function DiagramRenderer({ onFitToScreen }, ref) {
     const { diagram, setStatus, setIsLoadingDiagram } = useDiagramContext();
@@ -62,6 +108,12 @@ export const DiagramRenderer = forwardRef<HTMLDivElement, DiagramRendererProps>(
         // Render the diagram
         const { svg } = await mermaid.render(id, diagram);
         previewRef.current!.innerHTML = svg;
+
+        // Trim whitespace around the diagram
+        const svgElement = previewRef.current!.querySelector('svg');
+        if (svgElement) {
+          trimSvgWhitespace(svgElement);
+        }
 
         // Small delay to ensure SVG is fully rendered
         setTimeout(() => {

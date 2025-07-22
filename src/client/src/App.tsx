@@ -8,7 +8,8 @@ import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, Drawing
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
-import { useAnalytics, useFeatureFlag } from "@/hooks/useAnalytics";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { useFeatureFlag } from "@/hooks/useQueryParam";
 
 
 export function App() {
@@ -16,7 +17,7 @@ export function App() {
   const { diagram, setDiagram, setTitle, title, collection, setCollection, currentDiagramId, setCurrentDiagramId, loadDiagramById, status, setStatus } = useDiagramContext();
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
-  const isPenToolEnabled = useFeatureFlag('pen-tool');
+  const isPenToolEnabled = useFeatureFlag('xMarker'); // Pen tool enabled with ?xMarker=1
 
   // LocalStorage-backed state for UI preferences
   const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
@@ -367,6 +368,7 @@ export function App() {
         onClearDrawing={isPenToolEnabled ? () => {
           setClearDrawingTrigger(prev => prev + 1);
           setHasDrawing(false);
+          setIsDrawingMode(false);
         } : undefined}
       />
 

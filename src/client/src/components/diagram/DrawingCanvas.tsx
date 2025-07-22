@@ -13,6 +13,10 @@ interface Point {
   y: number;
 }
 
+// Fixed reference size for normalizing coordinates
+const REFERENCE_WIDTH = 1200;
+const REFERENCE_HEIGHT = 800;
+
 export function DrawingCanvas({ isDrawingMode, zoom, isDarkMode, clearDrawingTrigger, onDrawingChange }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -43,7 +47,11 @@ export function DrawingCanvas({ isDrawingMode, zoom, isDarkMode, clearDrawingTri
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Redraw all paths - no transformation needed since canvas is inside transformed container
+    // Calculate scale factors from reference to actual canvas size
+    const scaleX = canvas.width / REFERENCE_WIDTH;
+    const scaleY = canvas.height / REFERENCE_HEIGHT;
+
+    // Redraw all paths with scaled coordinates
     paths.forEach(path => {
       if (path.length < 2) return;
       
@@ -53,9 +61,9 @@ export function DrawingCanvas({ isDrawingMode, zoom, isDarkMode, clearDrawingTri
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      ctx.moveTo(path[0].x, path[0].y);
+      ctx.moveTo(path[0].x * scaleX, path[0].y * scaleY);
       for (let i = 1; i < path.length; i++) {
-        ctx.lineTo(path[i].x, path[i].y);
+        ctx.lineTo(path[i].x * scaleX, path[i].y * scaleY);
       }
       ctx.stroke();
     });
@@ -170,7 +178,15 @@ export function DrawingCanvas({ isDrawingMode, zoom, isDarkMode, clearDrawingTri
 
   const stopDrawing = useCallback(() => {
     if (isDrawing && currentPath.length > 1) {
-      setPaths([...paths, currentPath]);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        // Normalize the path coordinates before storing
+        const normalizedPath = currentPath.map(point => ({
+          x: (point.x / canvas.width) * REFERENCE_WIDTH,
+          y: (point.y / canvas.height) * REFERENCE_HEIGHT
+        }));
+        setPaths([...paths, normalizedPath]);
+      }
     }
     setIsDrawing(false);
     setCurrentPath([]);

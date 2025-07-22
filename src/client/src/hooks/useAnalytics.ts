@@ -1,4 +1,4 @@
-import { usePostHog, useFeatureFlagEnabled } from 'posthog-js/react';
+import { usePostHog } from 'posthog-js/react';
 
 export function useAnalytics() {
   const posthog = usePostHog();
@@ -72,6 +72,3 @@ export function useAnalytics() {
   };
 }
 
-export function useFeatureFlag(flagName: string): boolean {
-  return useFeatureFlagEnabled(flagName) || false;
-}
