@@ -81,6 +81,17 @@ In the `Command to run MCPserver` field enter `npx @mindpilot/mcp@latest` and cl
 - **Port**: The server defaults to port 4000 but can be configured using the `--port` command line switch.
 - **Data Path**: By default, diagrams are saved to `~/.mindpilot/data/`. You can specify a custom location using the `--data-path` command line switch.
 
+## Multi-Client Support
+
+Mindpilot intelligently handles multiple AI assistants running simultaneously. When you have multiple Claude Desktop windows or IDE instances open:
+
+- The first assistant to use Mindpilot starts a shared web server
+- Additional assistants automatically connect to the existing server
+- All assistants share the same diagram history and web interface
+- The server automatically shuts down a minute after the last assistant disconnects
+
+This means you can work with multiple AI assistants at once without port conflicts, and they'll all contribute to the same collection of diagrams.
+
 ## Anonymous Usage Tracking
 
 Mindpilot MCP collects anonymous usage data to help us understand how the product is being used and improve the user experience.
