@@ -36,10 +36,11 @@ export class HistoryService {
 
     const now = new Date();
     const entry: DiagramHistoryEntry = {
+      version: 1,
       id: uuidv4(),
       type: 'diagram',
-      timestamp: now,
-      lastEdited: now,
+      createdAt: now,
+      updatedAt: now,
       diagram,
       title,
       collection
@@ -72,10 +73,15 @@ export class HistoryService {
           
           // Handle missing fields for backward compatibility
           const entry: DiagramHistoryEntry = {
-            ...rawEntry,
+            version: rawEntry.version || 0,  // Version 0 for old format
+            id: rawEntry.id,
             type: rawEntry.type || 'diagram',  // Default to 'diagram' for old files
-            timestamp: new Date(rawEntry.timestamp),
-            lastEdited: new Date(rawEntry.lastEdited || rawEntry.timestamp)
+            // Handle old field names
+            createdAt: new Date(rawEntry.createdAt || rawEntry.timestamp),
+            updatedAt: new Date(rawEntry.updatedAt || rawEntry.lastEdited || rawEntry.timestamp),
+            diagram: rawEntry.diagram,
+            title: rawEntry.title,
+            collection: rawEntry.collection
           };
           
           // Filter by collection if specified
@@ -93,9 +99,9 @@ export class HistoryService {
       logger.debug('No diagrams found');
     }
 
-    // Sort by timestamp, newest first
+    // Sort by creation date, newest first
     return diagrams.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
 
@@ -184,8 +190,11 @@ export class HistoryService {
         rawEntry.diagram = updates.diagram;
       }
       
-      // Update lastEdited timestamp
-      rawEntry.lastEdited = new Date().toISOString();
+      // Update updatedAt timestamp and ensure version
+      rawEntry.updatedAt = new Date().toISOString();
+      if (!rawEntry.version) {
+        rawEntry.version = 1;
+      }
       
       // Write back the updated entry
       await fs.writeFile(filePath, JSON.stringify(rawEntry, null, 2));

@@ -21,10 +21,11 @@ export interface ServerStatus {
 
 // History types
 export interface DiagramHistoryEntry {
+  version: number;  // Data format version
   id: string;
   type: string;  // Type field for future expansion (diagram, template, shared, etc.)
-  timestamp: Date;
-  lastEdited: Date;
+  createdAt: Date;
+  updatedAt: Date;
   diagram: string;
   title: string;  // Required title
   collection: string | null;  // repo name, user collection, or null

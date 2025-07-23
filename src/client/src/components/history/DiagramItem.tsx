@@ -12,10 +12,11 @@ import { InlineEdit, InlineEditRef } from '@/components/ui/InlineEdit';
 import { useRef, useEffect } from 'react';
 
 export interface DiagramHistoryEntry {
+  version?: number;
   id: string;
   type: string;
-  timestamp: string;
-  lastEdited: string;
+  createdAt: string;
+  updatedAt: string;
   diagram: string;
   title: string;
   collection: string | null;
@@ -100,7 +101,7 @@ export function DiagramItem({
             requireDoubleClick={true}
           />
           <p className={`text-xs ${isDarkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-            {formatDate(entry.lastEdited)}
+            {formatDate(entry.updatedAt)}
           </p>
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">

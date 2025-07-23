@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export interface DiagramHistoryEntry {
+  version?: number;
   id: string;
   type: string;
-  timestamp: string;
-  lastEdited: string;
+  createdAt: string;
+  updatedAt: string;
   diagram: string;
   title: string;
   collection: string | null;
@@ -166,7 +167,7 @@ export function useDiagramHistory({ searchQuery, organizeByDate, currentDiagramI
     const groups: Record<string, DiagramHistoryEntry[]> = {};
 
     filteredHistory.forEach(entry => {
-      const date = new Date(entry.lastEdited);
+      const date = new Date(entry.updatedAt);
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
@@ -190,10 +191,10 @@ export function useDiagramHistory({ searchQuery, organizeByDate, currentDiagramI
       groups[groupName].push(entry);
     });
 
-    // Sort diagrams within each group by lastEdited (newest first)
+    // Sort diagrams within each group by updatedAt (newest first)
     Object.keys(groups).forEach(group => {
       groups[group].sort((a, b) =>
-        new Date(b.lastEdited).getTime() - new Date(a.lastEdited).getTime()
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
     });
 
@@ -222,18 +223,18 @@ export function useDiagramHistory({ searchQuery, organizeByDate, currentDiagramI
       groups[collectionName].push(entry);
     });
 
-    // Sort diagrams within each collection by lastEdited (newest first)
+    // Sort diagrams within each collection by updatedAt (newest first)
     Object.keys(groups).forEach(collection => {
       groups[collection].sort((a, b) =>
-        new Date(b.lastEdited).getTime() - new Date(a.lastEdited).getTime()
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
     });
 
     // Sort collections by the most recently edited diagram in each collection
     const sortedCollections = Object.entries(groups).sort(([, diagramsA], [, diagramsB]) => {
-      // Get the most recent lastEdited date in each collection
-      const mostRecentA = Math.max(...diagramsA.map(d => new Date(d.lastEdited).getTime()));
-      const mostRecentB = Math.max(...diagramsB.map(d => new Date(d.lastEdited).getTime()));
+      // Get the most recent updatedAt date in each collection
+      const mostRecentA = Math.max(...diagramsA.map(d => new Date(d.updatedAt).getTime()));
+      const mostRecentB = Math.max(...diagramsB.map(d => new Date(d.updatedAt).getTime()));
       // Sort by most recent first
       return mostRecentB - mostRecentA;
     });
@@ -284,7 +285,7 @@ export function useDiagramHistory({ searchQuery, organizeByDate, currentDiagramI
 
     if (organizeByDate) {
       // Find which date group contains this diagram
-      const date = new Date(currentEntry.lastEdited);
+      const date = new Date(currentEntry.updatedAt);
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
