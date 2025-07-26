@@ -64,9 +64,9 @@ export function AppLayout({
         {/* History Panel - Left Side */}
         <ResizablePanel
           ref={historyPanelRef}
-          defaultSize={isHistoryCollapsed ? 0 : historyPanelSize}
+          defaultSize={isHistoryCollapsed ? 0 : Math.min(historyPanelSize, 33)}
           minSize={20}
-          maxSize={40}
+          maxSize={33}
           collapsible={true}
           collapsedSize={0}
           onResize={(size) => {
@@ -93,9 +93,9 @@ export function AppLayout({
         {/* Edit Panel - Right Side */}
         <ResizablePanel
           ref={editPanelRef}
-          defaultSize={isEditCollapsed ? 0 : editPanelSize}
+          defaultSize={isEditCollapsed ? 0 : Math.min(editPanelSize, 33)}
           minSize={25}
-          maxSize={50}
+          maxSize={33}
           collapsible={true}
           collapsedSize={0}
           onResize={(size) => {
