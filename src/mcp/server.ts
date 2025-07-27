@@ -246,7 +246,7 @@ export class MindpilotMCPClient {
     const __dirname = path.dirname(__filename);
     const httpServerPath = path.resolve(__dirname, "../http/server.js");
 
-    // Start the singleton server as a separate process
+    // Start the HTTP server as a separate process
     const args = [httpServerPath, '--port', this.httpPort.toString()];
 
     // Pass debug flag to server if enabled
@@ -421,7 +421,7 @@ export class MindpilotMCPClient {
       State.STARTING_SERVER,
       async (context) => {
         try {
-          logger.info("Starting singleton HTTP server...");
+          logger.info("Starting HTTP server...");
           await this.startSingletonServer();
           await this.stateMachine.transition(Event.SERVER_STARTED);
         } catch (error) {

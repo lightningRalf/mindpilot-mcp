@@ -28,8 +28,6 @@ export class SingletonHTTPServer {
   private port: number;
   private startTime: Date = new Date();
   private lastMcpActivity: Date = new Date(); // Track last MCP client activity
-  private shutdownTimer: NodeJS.Timeout | null = null;
-  private readonly SHUTDOWN_DELAY_MS = 5000; // 5 seconds grace period
   private readonly MCP_TIMEOUT_MS = 60000; // 60 seconds MCP timeout
   private disableAnalytics: boolean;
   private dataPath: string | undefined;
@@ -55,8 +53,7 @@ export class SingletonHTTPServer {
 
     try {
       await this.fastify.listen({ port: this.port, host: "0.0.0.0" });
-      logger.info(`Singleton HTTP server started on port ${this.port}`);
-      this.cancelShutdownTimer();
+      logger.info(`HTTP server started on port ${this.port}`);
 
       // Start checking for shutdown periodically
       setInterval(() => {
@@ -140,7 +137,6 @@ export class SingletonHTTPServer {
       "/api/keepalive",
       async (request: FastifyRequest, reply: FastifyReply) => {
         this.lastMcpActivity = new Date();
-        this.cancelShutdownTimer(); // Cancel any pending shutdown
         logger.debug("MCP keepalive received");
         return reply.send({ status: "ok", timestamp: this.lastMcpActivity });
       },
@@ -157,7 +153,6 @@ export class SingletonHTTPServer {
 
           // Update MCP activity
           this.lastMcpActivity = new Date();
-          this.cancelShutdownTimer(); // Cancel any pending shutdown
 
           // Save to history if successful and get the diagram ID
           let diagramId: string | undefined;
@@ -312,35 +307,12 @@ export class SingletonHTTPServer {
       Date.now() - this.lastMcpActivity.getTime() >= this.MCP_TIMEOUT_MS;
 
     if (mcpInactive) {
-      logger.info(
-        `No recent MCP activity. Server will shut down in ${this.SHUTDOWN_DELAY_MS / 1000} seconds...`,
-      );
-
-      this.shutdownTimer = setTimeout(() => {
-        // Double-check MCP activity before shutdown
-        const stillMcpInactive =
-          Date.now() - this.lastMcpActivity.getTime() >= this.MCP_TIMEOUT_MS;
-
-        if (stillMcpInactive) {
-          logger.info("Shutting down singleton server - MCP client inactive");
-          this.stop();
-        } else {
-          logger.info("Shutdown cancelled - MCP activity detected");
-        }
-      }, this.SHUTDOWN_DELAY_MS);
-    }
-  }
-
-  private cancelShutdownTimer() {
-    if (this.shutdownTimer) {
-      clearTimeout(this.shutdownTimer);
-      this.shutdownTimer = null;
+      logger.info("Shutting down server - MCP client inactive for 60 seconds");
+      this.stop();
     }
   }
 
   async stop(): Promise<void> {
-    this.cancelShutdownTimer();
-
     if (this.fastify) {
       await this.fastify.close();
       this.fastify = null;
@@ -406,7 +378,7 @@ export async function isPortInUse(port: number, signal?: AbortSignal): Promise<b
   }
 }
 
-// Start singleton server if run directly
+// Start server if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { parseArgs } = await import('node:util');
   
