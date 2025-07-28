@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { useDiagramContext, useThemeContext } from "@/contexts";
-import { HistoryPanel } from "@/components/HistoryPanel";
+import { HistoryPanel, HistoryPanelRef } from "@/components/HistoryPanel";
 import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
 import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, DrawingCanvas } from "@/components/diagram";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
@@ -36,6 +36,7 @@ export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const editPanelRef = useRef<any>(null);
   const historyPanelRef = useRef<any>(null);
+  const historyPanelMethodsRef = useRef<HistoryPanelRef>(null);
   const saveDiagramTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use the pan/zoom hook
@@ -313,8 +314,24 @@ export function App() {
       }
     ];
     
+    // Add 1-9 shortcuts for jumping to nth diagram in expanded groups
+    for (let i = 1; i <= 9; i++) {
+      baseShortcuts.push({
+        key: String(i),
+        description: `Jump to diagram ${i} in expanded group`,
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming && !isHistoryCollapsed,
+        handler: () => {
+          const diagramId = historyPanelMethodsRef.current?.getNthDiagramInExpandedGroups(i);
+          if (diagramId) {
+            handleSelectDiagram(diagramId);
+          }
+        }
+      });
+    }
+    
     return baseShortcuts;
-  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram, isPenToolEnabled, isDrawingMode]);
+  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram, isPenToolEnabled, isDrawingMode, handleSelectDiagram]);
 
   useKeyboardShortcuts(shortcuts);
   usePreventBrowserZoom();
@@ -331,6 +348,7 @@ export function App() {
   // History panel content
   const historyPanelContent = (
     <HistoryPanel
+      ref={historyPanelMethodsRef}
       onSelectDiagram={handleSelectDiagram}
       isDarkMode={isDarkMode}
       currentDiagramId={currentDiagramId}

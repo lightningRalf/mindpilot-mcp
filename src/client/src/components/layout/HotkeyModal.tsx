@@ -33,6 +33,7 @@ const getShortcuts = (showPenTool: boolean): Shortcut[] => {
 
     // Navigation
     { keys: `${modKey}←|${modKey}→`, description: "Navigate between diagrams", category: "Navigation" },
+    { keys: `1-9`, description: "Jump to diagram in expanded sections", category: "Navigation" },
 
     // View
     { keys: "↑|↓", description: "Zoom in / out", category: "View" },

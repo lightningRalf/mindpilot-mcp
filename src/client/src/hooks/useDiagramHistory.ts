@@ -312,6 +312,23 @@ export function useDiagramHistory({ searchQuery, organizeByDate, currentDiagramI
     }
   }, [currentDiagramId, history, organizeByDate]);
 
+  // Get nth diagram ID from currently expanded groups (1-indexed)
+  const getNthDiagramInExpandedGroups = useCallback((n: number): string | null => {
+    const groups = organizeByDate ? dateGroupedHistory : collectionGroupedHistory;
+    
+    // Collect all diagrams from expanded groups
+    const expandedDiagrams: DiagramHistoryEntry[] = [];
+    groups.forEach(([groupName, diagrams]) => {
+      if (expandedCollections.has(groupName)) {
+        expandedDiagrams.push(...diagrams);
+      }
+    });
+    
+    // Return the nth diagram ID (1-indexed)
+    if (n < 1 || n > expandedDiagrams.length) return null;
+    return expandedDiagrams[n - 1].id;
+  }, [organizeByDate, dateGroupedHistory, collectionGroupedHistory, expandedCollections]);
+
   return {
     history: filteredHistory,
     totalDiagrams: history.length,
@@ -320,6 +337,7 @@ export function useDiagramHistory({ searchQuery, organizeByDate, currentDiagramI
     groupedHistory: organizeByDate ? dateGroupedHistory : collectionGroupedHistory,
     formatDate,
     toggleCollection,
+    getNthDiagramInExpandedGroups,
     deleteDiagram,
     renameDiagram,
     refetchHistory: fetchHistory,

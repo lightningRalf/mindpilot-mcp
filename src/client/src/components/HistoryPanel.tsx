@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { SearchBar, DiagramList } from './history';
 import { ModeSelector, CloudModeModal } from '@/components/common';
 import { useDiagramHistory, useExportDiagram, useAnalytics, useLocalStorage, useLocalStorageBoolean } from '@/hooks';
@@ -16,7 +16,11 @@ export interface HistoryPanelProps {
   onDiagramListChange?: (diagrams: string[]) => void;
 }
 
-export function HistoryPanel({
+export interface HistoryPanelRef {
+  getNthDiagramInExpandedGroups: (n: number) => string | null;
+}
+
+export const HistoryPanel = forwardRef<HistoryPanelRef, HistoryPanelProps>(({
   onSelectDiagram,
   isDarkMode,
   currentDiagramId,
@@ -26,7 +30,7 @@ export function HistoryPanel({
   initialDiagramId,
   onEditingChange,
   onDiagramListChange
-}: HistoryPanelProps) {
+}: HistoryPanelProps, ref) => {
   const [organizeByDate, setOrganizeByDate] = useLocalStorageBoolean('mindpilot-mcp-organize-by-date', true);
   const [searchQuery, setSearchQuery] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
@@ -43,6 +47,7 @@ export function HistoryPanel({
     groupedHistory,
     formatDate,
     toggleCollection,
+    getNthDiagramInExpandedGroups,
     deleteDiagram,
     renameDiagram,
   } = useDiagramHistory({ 
@@ -59,6 +64,11 @@ export function HistoryPanel({
   
   // Use analytics
   const { trackDiagramSelected, trackDiagramExported, trackDiagramDeleted } = useAnalytics();
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    getNthDiagramInExpandedGroups
+  }), [getNthDiagramInExpandedGroups]);
 
   // Extract ordered list of diagram IDs and notify parent
   useEffect(() => {
@@ -238,4 +248,4 @@ export function HistoryPanel({
       />
     </div>
   );
-}
+});
