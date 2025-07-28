@@ -290,6 +290,7 @@ export function App() {
       // Navigation
       {
         key: 'ArrowLeft',
+        ctrl: true,
         description: 'Previous diagram',
         ignoreInputElements: true,
         isEnabled: () => !isEditorFocused && !isRenaming,
@@ -297,6 +298,7 @@ export function App() {
       },
       {
         key: 'ArrowRight',
+        ctrl: true,
         description: 'Next diagram',
         ignoreInputElements: true,
         isEnabled: () => !isEditorFocused && !isRenaming,

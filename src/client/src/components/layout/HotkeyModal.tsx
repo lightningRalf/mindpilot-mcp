@@ -19,6 +19,10 @@ interface Shortcut {
 }
 
 const getShortcuts = (showPenTool: boolean): Shortcut[] => {
+  // Detect if we're on macOS
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const modKey = isMac ? '⌘' : 'Ctrl+';
+  
   const shortcuts: Shortcut[] = [
     // Theme
     { keys: "D", description: "Toggle dark/light mode", category: "Theme" },
@@ -28,7 +32,7 @@ const getShortcuts = (showPenTool: boolean): Shortcut[] => {
     { keys: "E", description: "Toggle editor panel", category: "Panels" },
 
     // Navigation
-    { keys: "←|→", description: "Navigate between diagrams", category: "Navigation" },
+    { keys: `${modKey}←|${modKey}→`, description: "Navigate between diagrams", category: "Navigation" },
 
     // View
     { keys: "↑|↓", description: "Zoom in / out", category: "View" },
