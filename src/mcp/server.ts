@@ -51,9 +51,13 @@ export class MindpilotMCPClient {
   private stateMachine: StateMachine;
   private abortController: AbortController | null = null;
   private waitServerController: AbortController | null = null;
+  private disableAnalytics: boolean;
+  private dataPath: string | undefined;
 
-  constructor(port: number = 4000) {
+  constructor(port: number = 4000, disableAnalytics: boolean = false, dataPath?: string) {
     this.httpPort = port;
+    this.disableAnalytics = disableAnalytics;
+    this.dataPath = dataPath;
     this.clientId = `mcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.clientName = `MCP Client ${new Date().toLocaleTimeString()}`;
 
@@ -129,8 +133,13 @@ export class MindpilotMCPClient {
                 description: "Background color",
                 default: "white",
               },
+              title: {
+                type: "string",
+                description: "Title for the diagram (max 50 characters)",
+                maxLength: 50,
+              },
             },
-            required: ["diagram"],
+            required: ["diagram", "title"],
           },
         },
         {
@@ -162,6 +171,7 @@ export class MindpilotMCPClient {
             const renderResult = await this.renderMermaid(
               args?.diagram as string,
               args?.background as string,
+              args?.title as string,
             );
             return {
               content: [
@@ -236,12 +246,23 @@ export class MindpilotMCPClient {
     const __dirname = path.dirname(__filename);
     const httpServerPath = path.resolve(__dirname, "../http/server.js");
 
-    // Start the singleton server as a separate process
+    // Start the HTTP server as a separate process
     const args = [httpServerPath, '--port', this.httpPort.toString()];
 
     // Pass debug flag to server if enabled
     if (isDebugMode) {
       args.push("--debug");
+    }
+
+    // Pass disable-analytics flag to server if enabled
+    if (this.disableAnalytics) {
+      args.push("--disable-analytics");
+    }
+
+    // Pass data-path flag to server if provided
+    if (this.dataPath) {
+      args.push("--data-path");
+      args.push(this.dataPath);
     }
 
     const serverProcess = spawn("node", args, {
@@ -259,6 +280,7 @@ export class MindpilotMCPClient {
   private async renderMermaid(
     diagram: string,
     background?: string,
+    title?: string,
   ): Promise<RenderResult> {
     // Use HTTP API endpoint
     try {
@@ -272,8 +294,10 @@ export class MindpilotMCPClient {
           body: JSON.stringify({
             diagram,
             background,
+            title,
             clientId: this.clientId,
             clientName: this.clientName,
+            workingDir: process.cwd(),
           }),
           signal: this.getAbortSignal(),
         },
@@ -397,7 +421,7 @@ export class MindpilotMCPClient {
       State.STARTING_SERVER,
       async (context) => {
         try {
-          logger.info("Starting singleton HTTP server...");
+          logger.info("Starting HTTP server...");
           await this.startSingletonServer();
           await this.stateMachine.transition(Event.SERVER_STARTED);
         } catch (error) {
@@ -615,12 +639,20 @@ if (isMainModule()) {
       debug: {
         type: 'boolean',
         default: false
+      },
+      'disable-analytics': {
+        type: 'boolean',
+        default: false
+      },
+      'data-path': {
+        type: 'string',
+        default: undefined
       }
     }
   });
   
   const port = parseInt(values.port!, 10);
-  const client = new MindpilotMCPClient(port);
+  const client = new MindpilotMCPClient(port, values['disable-analytics'] as boolean, values['data-path'] as string | undefined);
 
   // Handle graceful shutdown
   const shutdown = async () => {

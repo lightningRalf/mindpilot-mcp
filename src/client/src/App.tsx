@@ -1,593 +1,507 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import {
-  ChevronLeft,
-  Pencil,
-} from "lucide-react";
-import mermaid from "mermaid";
-import { MCPServerStatus } from "@/components/MCPServerStatus";
-import { Branding } from "@/components/Branding";
-import { FloatingConnectionStatus } from "@/components/FloatingConnectionStatus";
-import { ZoomControls } from "@/components/ZoomControls";
-import { TopRightToolBar } from "@/components/TopRightToolBar";
-import { useWebSocketStateMachine } from "@/hooks/useWebSocketStateMachine";
-import { MermaidEditor } from "@/components/MermaidEditor";
+import { ChevronRight } from "lucide-react";
+import { useDiagramContext, useThemeContext } from "@/contexts";
+import { HistoryPanel } from "@/components/HistoryPanel";
+import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
+import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, DrawingCanvas } from "@/components/diagram";
+import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
+import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
+import { usePanZoom } from "@/hooks/usePanZoom";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { useFeatureFlag } from "@/hooks/useQueryParam";
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "default",
-  securityLevel: "loose",
-  flowchart: {
-    useMaxWidth: false,
-    htmlLabels: true,
-  },
-});
 
-function App() {
-  const [diagram, setDiagram] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-dark-mode");
-    return saved === "true";
-  });
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-panel-collapsed");
-    return saved !== null ? saved === "true" : true; // Default to collapsed on first use
-  });
-  const [panelSize, setPanelSize] = useState(() => {
-    const saved = localStorage.getItem("mindpilot-mcp-panel-size");
-    return saved ? parseFloat(saved) : 50;
-  });
-  const [status, setStatus] = useState("Ready");
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [startPan, setStartPan] = useState({ x: 0, y: 0 });
-  const [hasManuallyZoomed, setHasManuallyZoomed] = useState(false);
-  const [isZooming, setIsZooming] = useState(false);
+export function App() {
+  // Get state from contexts
+  const { diagram, setDiagram, setTitle, title, collection, setCollection, currentDiagramId, setCurrentDiagramId, loadDiagramById, status, setStatus } = useDiagramContext();
+  const { isDarkMode, toggleTheme } = useThemeContext();
+  const { trackThemeChanged, trackPanelToggled } = useAnalytics();
+  const isPenToolEnabled = useFeatureFlag('xMarker'); // Pen tool enabled with ?xMarker=1
+
+  // LocalStorage-backed state for UI preferences
+  const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
+  const [editPanelSize, setEditPanelSize] = useLocalStorageNumber("mindpilot-mcp-edit-panel-size", 30);
+
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useLocalStorageBoolean("mindpilot-mcp-history-collapsed", false);
+  const [historyPanelSize, setHistoryPanelSize] = useLocalStorageNumber("mindpilot-mcp-history-panel-size", 20);
+  const [showHotkeyModal, setShowHotkeyModal] = useState(false);
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [orderedDiagramIds, setOrderedDiagramIds] = useState<string[]>([]);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [hasDrawing, setHasDrawing] = useState(false);
+  const [clearDrawingTrigger, setClearDrawingTrigger] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<any>(null);
-  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const editPanelRef = useRef<any>(null);
+  const historyPanelRef = useRef<any>(null);
+  const saveDiagramTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // WebSocket connection setup - memoize to prevent re-calculation
-  const wsUrl = useMemo(() => {
-    const currentPort = window.location.port;
-    const isDev = currentPort === "5173";
-
-    // In dev mode, always connect to port 4000 (MCP server)
-    // In production, use the same port as the page
-    const url = isDev
-      ? `ws://${window.location.hostname}:4000/ws`
-      : `ws://${window.location.hostname}:${window.location.port}/ws`;
-
-    console.log('[WebSocket Setup]', {
-      isDev,
-      currentPort,
-      hostname: window.location.hostname,
-      wsUrl: url,
-      fullUrl: window.location.href,
-      note: isDev ? 'Dev mode - connecting to MCP server on port 4000' : 'Production mode - using same port'
-    });
-
-    return url;
-  }, []); // Empty deps - URL shouldn't change during the session
-
-  const { state, reconnect, send } = useWebSocketStateMachine({
-    url: wsUrl,
-    onMessage: (data) => {
-      console.log('[WebSocket Message]', data);
-      if (data.type === "render_result" && data.diagram) {
-        console.log("Updating diagram from WebSocket broadcast");
-        setDiagram(data.diagram);
-        setStatus("Rendered successfully (via broadcast)");
-
-        // Reset view to fit new diagram
-        setHasManuallyZoomed(false);
-        // Small delay to allow diagram to render before fitting
-        setTimeout(() => {
-          handleFitToScreen(true);
-        }, 100);
-      } else if (data.type === "visibility_query") {
-        // Server is asking if we're visible
-        const isVisible = !document.hidden;
-        console.log('[Visibility Query] Responding with:', { isVisible, hidden: document.hidden });
-        send({
-          type: "visibility_response",
-          isVisible
-        });
-      }
-    },
-  });
-
-  // Map state machine states to UI status messages
-  const connectionStatus = (() => {
-    switch (state) {
-      case 'connected': return 'Connected';
-      case 'connecting': return 'Connecting...';
-      case 'reconnecting': return 'Reconnecting...';
-      case 'failed': return 'Disconnected';
-      case 'disconnected': return 'Disconnected';
-      default: return 'Disconnected';
-    }
-  })();
-
-  // Cleanup zoom timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current);
-        zoomTimeoutRef.current = null;
-      }
-    };
-  }, []);
+  // Use the pan/zoom hook
+  const {
+    zoom,
+    pan,
+    isPanning,
+    isZooming,
+    hasManuallyZoomed,
+    handleZoomIn,
+    handleZoomOut,
+    handleFitToScreen,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleMouseLeave,
+    setHasManuallyZoomed,
+  } = usePanZoom(containerRef, previewRef);
 
 
-  // Render diagram
-  useEffect(() => {
-    if (!previewRef.current) return;
 
-    const renderDiagram = async () => {
+
+
+  // Shared state for forcing history refresh
+  const [historyRefreshTrigger] = useState(0);
+
+  // Handle title change from diagram title component
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    setTitle(newTitle);
+
+    // If we have a current diagram ID, also save to server
+    if (currentDiagramId) {
       try {
-        // Clear previous content
-        previewRef.current!.innerHTML = "";
-
-        // Skip rendering if diagram is empty or null
-        if (!diagram || diagram.trim() === "") {
-          return;
-        }
-
-        // Update theme
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: isDarkMode ? "dark" : "default",
-          securityLevel: "loose",
-          suppressErrorRendering: true,
-          flowchart: {
-            useMaxWidth: false,
-            htmlLabels: true,
+        await fetch(`/api/history/${currentDiagramId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ title: newTitle }),
         });
 
-        // Generate unique ID
-        const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        // Don't refresh history - the history panel will update its local state
+        // when it receives the title change via onCurrentDiagramTitleChange
+      } catch (error) {
+        console.error('Failed to update diagram title:', error);
+      }
+    }
+  }, [setTitle, currentDiagramId]);
 
-        // Render the diagram
-        const { svg } = await mermaid.render(id, diagram);
-        previewRef.current!.innerHTML = svg;
+  // Handle diagram content change with auto-save
+  const handleDiagramChange = useCallback((newDiagram: string) => {
+    setDiagram(newDiagram);
+    
+    // If we have a current diagram ID, save the content after a delay
+    if (currentDiagramId && newDiagram.trim()) {
+      // Debounce the save operation
+      if (saveDiagramTimeoutRef.current) {
+        clearTimeout(saveDiagramTimeoutRef.current);
+      }
+      
+      saveDiagramTimeoutRef.current = setTimeout(async () => {
+        try {
+          setStatus('Saving...');
+          await fetch(`/api/history/${currentDiagramId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ diagram: newDiagram }),
+          });
+          console.log('[App] Saved diagram content for ID:', currentDiagramId);
+          setStatus('Saved');
+          // Clear saved status after 2 seconds
+          setTimeout(() => setStatus('Ready'), 2000);
+        } catch (error) {
+          console.error('Failed to update diagram content:', error);
+          setStatus('Save failed');
+        }
+      }, 2000); // Save after 2 seconds of inactivity
+    }
+  }, [setDiagram, currentDiagramId, setStatus]);
 
-        // Reset pan when diagram changes and reset manual zoom flag
-        setPan({ x: 0, y: 0 });
-        setHasManuallyZoomed(false);
+  // Parse URL to get initial diagram ID
+  const getInitialDiagramId = () => {
+    const pathMatch = window.location.pathname.match(/^\/artifacts\/([a-zA-Z0-9-]+)$/);
+    return pathMatch ? pathMatch[1] : null;
+  };
+  
+  const [urlDiagramId] = useState(getInitialDiagramId);
 
-        setStatus("Rendered successfully");
-      } catch (error: any) {
-        previewRef.current!.innerHTML = `<div class="text-red-500 p-4">Error: ${error.message}</div>`;
-        setStatus("Render error");
+  // Handle showHotkeyModal event
+  useEffect(() => {
+    const handleShowHotkeyModal = () => {
+      setShowHotkeyModal(true);
+    };
+
+    window.addEventListener('showHotkeyModal', handleShowHotkeyModal);
+    return () => {
+      window.removeEventListener('showHotkeyModal', handleShowHotkeyModal);
+    };
+  }, []);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const pathMatch = window.location.pathname.match(/^\/artifacts\/([a-zA-Z0-9-]+)$/);
+
+      if (pathMatch && pathMatch[1]) {
+        const diagramId = pathMatch[1];
+        if (diagramId !== currentDiagramId) {
+          loadDiagramById(diagramId);
+        }
+      } else if (window.location.pathname === '/' && currentDiagramId) {
+        // Clear selection when navigating to root
+        setCurrentDiagramId(null);
+        setDiagram('');
+        setTitle('');
+        setCollection(null);
       }
     };
 
-    const timeoutId = setTimeout(renderDiagram, 500);
-    return () => clearTimeout(timeoutId);
-  }, [diagram, isDarkMode]);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentDiagramId, loadDiagramById, setCurrentDiagramId, setDiagram, setTitle, setCollection]);
 
-  const handleExport = () => {
-    const svg = previewRef.current?.querySelector("svg");
-    if (!svg) {
-      setStatus("No diagram to export");
-      return;
-    }
+  // Update URL when diagram selection changes
+  const updateUrlForDiagram = useCallback((diagramId: string | null) => {
+    const pathMatch = window.location.pathname.match(/^\/artifacts\/([a-zA-Z0-9-]+)$/);
+    const currentUrlId = pathMatch ? pathMatch[1] : null;
 
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([svgData], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "mermaid-diagram.svg";
-    a.click();
-
-    URL.revokeObjectURL(url);
-    setStatus("SVG exported");
-  };
-
-  // Zoom handlers
-  const handleZoomIn = () => {
-    setZoom((prev) => Math.min(prev * 1.2, 5));
-    setHasManuallyZoomed(true);
-  };
-
-  const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev / 1.2, 0.1));
-    setHasManuallyZoomed(true);
-  };
-
-  const handleZoomReset = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-    setHasManuallyZoomed(true);
-  };
-
-  const handleFitToScreen = (isAutoResize = false) => {
-    const svgElement = previewRef.current?.querySelector("svg");
-    const container = containerRef.current;
-
-    if (svgElement && container) {
-      // Get SVG's natural dimensions from viewBox or width/height attributes
-      let svgWidth =
-        svgElement.viewBox.baseVal.width || svgElement.width.baseVal.value;
-      let svgHeight =
-        svgElement.viewBox.baseVal.height || svgElement.height.baseVal.value;
-
-      // If no viewBox, try to get from the rendered size
-      if (!svgWidth || !svgHeight) {
-        const bbox = svgElement.getBBox();
-        svgWidth = bbox.width;
-        svgHeight = bbox.height;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-
-      // Calculate scale to fit within container with padding
-      const padding = 40;
-      const scaleX = (containerRect.width - padding * 2) / svgWidth;
-      const scaleY = (containerRect.height - padding * 2) / svgHeight;
-      const fitScale = Math.min(scaleX, scaleY);
-
-      // Apply the scale if valid
-      if (fitScale > 0 && isFinite(fitScale)) {
-        setZoom(fitScale);
-        setPan({ x: 0, y: 0 });
-        // Mark as manual zoom if triggered by button click
-        if (!isAutoResize) {
-          setHasManuallyZoomed(true);
-        }
-      }
-    }
-  };
-
-  // Mouse handlers for panning
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      // Left click
-      setIsPanning(true);
-      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-      e.preventDefault();
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isPanning) {
-      setPan({
-        x: e.clientX - startPan.x,
-        y: e.clientY - startPan.y,
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsPanning(false);
-  };
-
-  // Apply dark mode class to body and save to localStorage
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("mindpilot-mcp-dark-mode", isDarkMode.toString());
-  }, [isDarkMode]);
-
-  // Save collapsed state to localStorage
-  useEffect(() => {
-    localStorage.setItem("mindpilot-mcp-panel-collapsed", isCollapsed.toString());
-  }, [isCollapsed]);
-
-  // Apply initial collapsed state
-  useEffect(() => {
-    if (isCollapsed && panelRef.current?.collapse) {
-      panelRef.current.collapse();
+    if (diagramId && diagramId !== currentUrlId) {
+      window.history.pushState({}, '', `/artifacts/${diagramId}`);
+    } else if (!diagramId && window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/');
     }
   }, []);
 
-  // Handle container resize
-  useEffect(() => {
-    if (!containerRef.current) return;
+  // Modified handleSelectDiagram to update URL
+  const handleSelectDiagram = useCallback((diagramId: string) => {
+    loadDiagramById(diagramId);
+    updateUrlForDiagram(diagramId);
+  }, [loadDiagramById, updateUrlForDiagram]);
 
-    let timeoutId: NodeJS.Timeout;
-    const resizeObserver = new ResizeObserver(() => {
-      // Debounce the fit calculation
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        // Always fit on resize unless user has manually zoomed
-        if (!hasManuallyZoomed) {
-          handleFitToScreen(true);
+  // Navigation between diagrams
+  const navigateToNextDiagram = useCallback(() => {
+    if (!currentDiagramId || orderedDiagramIds.length === 0) return;
+    
+    const currentIndex = orderedDiagramIds.indexOf(currentDiagramId);
+    if (currentIndex === -1) return;
+    
+    // Blur any currently focused element to remove focus rings
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    
+    // Move to next diagram, wrap around to beginning
+    const nextIndex = (currentIndex + 1) % orderedDiagramIds.length;
+    const nextDiagramId = orderedDiagramIds[nextIndex];
+    
+    handleSelectDiagram(nextDiagramId);
+  }, [currentDiagramId, orderedDiagramIds, handleSelectDiagram]);
+
+  const navigateToPreviousDiagram = useCallback(() => {
+    if (!currentDiagramId || orderedDiagramIds.length === 0) return;
+    
+    const currentIndex = orderedDiagramIds.indexOf(currentDiagramId);
+    if (currentIndex === -1) return;
+    
+    // Blur any currently focused element to remove focus rings
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    
+    // Move to previous diagram, wrap around to end
+    const prevIndex = currentIndex === 0 ? orderedDiagramIds.length - 1 : currentIndex - 1;
+    const prevDiagramId = orderedDiagramIds[prevIndex];
+    
+    handleSelectDiagram(prevDiagramId);
+  }, [currentDiagramId, orderedDiagramIds, handleSelectDiagram]);
+
+  // Keyboard shortcuts
+  const shortcuts = useMemo<KeyboardShortcut[]>(() => {
+    const baseShortcuts: KeyboardShortcut[] = [
+      // Mode toggle
+      {
+        key: 'd',
+        description: 'Toggle dark/light mode',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => {
+          toggleTheme();
+          trackThemeChanged({ theme: isDarkMode ? 'light' : 'dark' });
         }
-      }, 300);
-    });
-
-    resizeObserver.observe(containerRef.current);
-
-    return () => {
-      clearTimeout(timeoutId);
-      resizeObserver.disconnect();
-    };
-  }, [hasManuallyZoomed]); // Re-setup when manual zoom state changes
-
-  // Keyboard shortcuts and prevent browser zoom
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent browser zoom
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")
-      ) {
-        e.preventDefault();
-
-        // Only handle our zoom if not in textarea
-        if (!(e.target instanceof HTMLTextAreaElement)) {
-          switch (e.key) {
-            case "+":
-            case "=":
-              handleZoomIn();
-              break;
-            case "-":
-              handleZoomOut();
-              break;
-            case "0":
-              handleZoomReset();
-              break;
+      },
+      // Panel toggles
+      {
+        key: 'h',
+        description: 'Toggle history panel',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => {
+          if (isHistoryCollapsed) {
+            historyPanelRef.current?.expand();
+          } else {
+            historyPanelRef.current?.collapse();
           }
         }
+      },
+      {
+        key: 'e',
+        description: 'Toggle editor panel',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => {
+          if (isEditCollapsed) {
+            editPanelRef.current?.expand();
+          } else {
+            editPanelRef.current?.collapse();
+          }
+        }
+      },
+      // Zoom controls
+      {
+        key: 'ArrowUp',
+        description: 'Zoom in',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleZoomIn()
+      },
+      {
+        key: 'ArrowDown',
+        description: 'Zoom out',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleZoomOut()
+      },
+      {
+        key: 'f',
+        description: 'Fit to screen',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleFitToScreen()
+      },
+      // Drawing (only if feature flag is enabled)
+      ...(isPenToolEnabled ? [{
+        key: 'p',
+        description: 'Toggle pen/drawing mode',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => setIsDrawingMode(!isDrawingMode)
+      }] : []),
+      // Navigation
+      {
+        key: 'ArrowLeft',
+        ctrl: true,
+        description: 'Previous diagram',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => navigateToPreviousDiagram()
+      },
+      {
+        key: 'ArrowRight',
+        ctrl: true,
+        description: 'Next diagram',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => navigateToNextDiagram()
+      },
+      // Help
+      {
+        key: '?',
+        description: 'Show keyboard shortcuts',
+        caseSensitive: true,
+        handler: () => setShowHotkeyModal(prev => !prev)
       }
-    };
+    ];
+    
+    return baseShortcuts;
+  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram, isPenToolEnabled, isDrawingMode]);
 
-    // Prevent browser zoom via mouse wheel
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-      }
-    };
+  useKeyboardShortcuts(shortcuts);
+  usePreventBrowserZoom();
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("wheel", handleWheel, { passive: false });
 
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("wheel", handleWheel);
-    };
-  }, []);
-
-  // Attach wheel handler to preview container with passive: false
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleContainerWheel = (e: WheelEvent) => {
-      e.preventDefault();
-
-      // Set zooming state to disable transitions
-      setIsZooming(true);
-
-      // Clear existing timeout
-      if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current);
-      }
-
-      // Reset zooming state after wheel events stop
-      zoomTimeoutRef.current = setTimeout(() => {
-        setIsZooming(false);
-      }, 150);
-
-      // More natural zoom with logarithmic scaling
-      // Detect if using trackpad (smaller delta values) vs mouse wheel (larger, discrete values)
-      const isTrackpad = Math.abs(e.deltaY) < 50;
-      const zoomSensitivity = isTrackpad ? 0.01 : 0.02; // Balanced sensitivity
-
-      const deltaY = e.deltaY;
-
-      // Apply logarithmic scaling for more natural feel
-      const zoomFactor = Math.exp(-deltaY * zoomSensitivity);
-      const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.1), 5);
-
-      // Zoom towards mouse position
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      // Calculate the point in diagram space (before zoom)
-      const pointX = (x - rect.width / 2 - pan.x) / zoom;
-      const pointY = (y - rect.height / 2 - pan.y) / zoom;
-
-      // Calculate new pan to keep the same point under the mouse
-      setPan({
-        x: x - rect.width / 2 - pointX * newZoom,
-        y: y - rect.height / 2 - pointY * newZoom,
-      });
-
-      setZoom(newZoom);
+  // Create callback for diagram onFitToScreen
+  const handleDiagramFitToScreen = useCallback((isAutoResize?: boolean) => {
+    if (!isAutoResize) {
       setHasManuallyZoomed(true);
-    };
+    }
+    handleFitToScreen(isAutoResize);
+  }, [handleFitToScreen, setHasManuallyZoomed]);
 
-    container.addEventListener('wheel', handleContainerWheel, { passive: false });
+  // History panel content
+  const historyPanelContent = (
+    <HistoryPanel
+      onSelectDiagram={handleSelectDiagram}
+      isDarkMode={isDarkMode}
+      currentDiagramId={currentDiagramId}
+      currentDiagramTitle={title}
+      onCurrentDiagramTitleChange={setTitle}
+      refreshTrigger={historyRefreshTrigger}
+      initialDiagramId={urlDiagramId}
+      onEditingChange={setIsRenaming}
+      onDiagramListChange={setOrderedDiagramIds}
+    />
+  );
 
-    return () => {
-      container.removeEventListener('wheel', handleContainerWheel);
-    };
-  }, [zoom, pan]);
+  // Center panel content
+  const centerContent = (
+    <div className={`h-full flex flex-col relative ${isDarkMode ? "bg-neutral-800" : "bg-neutral-100"}`}>
+      <DiagramTitle
+        title={title}
+        collection={collection}
+        isDarkMode={isDarkMode}
+        isEditable={true}
+        onTitleChange={handleTitleChange}
+        onEditingChange={setIsRenaming}
+      />
 
-  return (
-    <div
-      className={`h-screen w-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-neutral-900"}`}
-    >
-      <ResizablePanelGroup direction="horizontal" className="flex-1 relative">
-        {isCollapsed && (
-          <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 p-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                panelRef.current?.expand();
-              }}
-              className="h-8 w-8"
-              title="Show editor"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
+      <ZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onFitToScreen={() => handleFitToScreen()}
+        isDarkMode={isDarkMode}
+        onToggleTheme={() => {
+          toggleTheme();
+          trackThemeChanged({ theme: isDarkMode ? 'light' : 'dark' });
+        }}
+        isDrawingMode={isPenToolEnabled ? isDrawingMode : undefined}
+        onToggleDrawing={isPenToolEnabled ? () => setIsDrawingMode(!isDrawingMode) : undefined}
+        hasDrawing={isPenToolEnabled ? hasDrawing : false}
+        onClearDrawing={isPenToolEnabled ? () => {
+          setClearDrawingTrigger(prev => prev + 1);
+          setHasDrawing(false);
+          setIsDrawingMode(false);
+        } : undefined}
+      />
+
+      <PanZoomContainer
+        ref={containerRef}
+        zoom={zoom}
+        pan={pan}
+        isPanning={isPanning}
+        isZooming={isZooming}
+        isDrawingMode={isPenToolEnabled && isDrawingMode}
+        onMouseDown={isPenToolEnabled && isDrawingMode ? undefined : handleMouseDown}
+        onMouseMove={isPenToolEnabled && isDrawingMode ? undefined : handleMouseMove}
+        onMouseUp={isPenToolEnabled && isDrawingMode ? undefined : handleMouseUp}
+        onMouseLeave={isPenToolEnabled && isDrawingMode ? undefined : handleMouseLeave}
+      >
+        <DiagramRenderer
+          ref={previewRef}
+          onFitToScreen={handleDiagramFitToScreen}
+        />
+        {isPenToolEnabled && (
+          <DrawingCanvas
+            isDrawingMode={isDrawingMode}
+            zoom={zoom}
+            isDarkMode={isDarkMode}
+            clearDrawingTrigger={clearDrawingTrigger}
+            onDrawingChange={setHasDrawing}
+          />
         )}
-        <ResizablePanel
-          ref={panelRef}
-          defaultSize={panelSize}
-          minSize={20}
-          maxSize={80}
-          collapsible={true}
-          collapsedSize={0}
-          onResize={(size) => {
-            if (size > 0) {
-              setPanelSize(size);
-              localStorage.setItem("mindpilot-mcp-panel-size", size.toString());
-            }
-          }}
-          onCollapse={() => {
-            setIsCollapsed(true);
-            // Fit to screen when editor is collapsed
-            setTimeout(() => {
-              if (!hasManuallyZoomed) {
-                handleFitToScreen(true);
-              } else {
-                // Reset manual zoom flag on panel state change
-                setHasManuallyZoomed(false);
-              }
-            }, 300);
-          }}
-          onExpand={() => {
-            setIsCollapsed(false);
-            // Fit to screen when editor is expanded
-            setTimeout(() => {
-              if (!hasManuallyZoomed) {
-                handleFitToScreen(true);
-              } else {
-                // Reset manual zoom flag on panel state change
-                setHasManuallyZoomed(false);
-              }
-            }, 300);
-          }}
-        >
-          {/* panel status bar */}
-          <div
-            className={`h-full flex flex-col relative ${isCollapsed ? "" : isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}
-          >
-            {!isCollapsed && (
-              <>
-                <div className="absolute z-10 top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-500 p-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      panelRef.current?.collapse();
-                    }}
-                    className="h-8 w-8"
-                    title="Hide editor"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className={`flex-1 p-4 pl-20 ${isDarkMode ? "bg-gray-800" : "bg-neutral-200"}`}>
-                  <MermaidEditor
-                    value={diagram}
-                    onChange={setDiagram}
-                    isDarkMode={isDarkMode}
-                  />
-                </div>
-                <div
-                  className={`p-2 text-xs border-t flex justify-between items-center ${isDarkMode ? "text-gray-400 border-gray-700" : "text-muted-foreground border-gray-300"}`}
-                >
-                  <MCPServerStatus
-                    connectionStatus={connectionStatus}
-                    onReconnect={reconnect}
-                    isDarkMode={isDarkMode}
-                    isCollapsedView={false}
-                  />
-                  <span>{status}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle className="bg-gray-300 dark:bg-gray-700" />
-
-        <ResizablePanel defaultSize={50}>
-          <div
-            className={`h-full flex flex-col relative ${isDarkMode ? "bg-gray-800" : "bg-neutral-100"}`}
-          >
-            {/* Zoom Controls */}
-            <ZoomControls
-              zoom={zoom}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onZoomReset={handleZoomReset}
-              onFitToScreen={() => handleFitToScreen()}
-            />
-
-            <div
-              ref={containerRef}
-              className={`flex-1 overflow-hidden relative ${isDarkMode ? "bg-gray-850" : ""}`}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              // onWheel handler moved to useEffect with passive: false
-              style={{ cursor: isPanning ? "grabbing" : "grab" }}
-            >
-              <div
-                className="w-full h-full flex items-center justify-center"
-                style={{
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                  transformOrigin: "center",
-                  transition:
-                    isPanning || isZooming ? "none" : "transform 0.1s ease-out",
-                }}
-              >
-                <div
-                  ref={previewRef}
-                  className="[&>svg]:!max-width-none [&>svg]:!max-height-none"
-                />
-              </div>
-
-
-            </div>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-
-      {/* Download and Dark Mode */}
-      <TopRightToolBar
-        isDarkMode={isDarkMode}
-        onExport={handleExport}
-        onToggleTheme={() => setIsDarkMode(!isDarkMode)}
-      />
-
-
-      {/* MCP Server Status in bottom left when panel is collapsed */}
-      <FloatingConnectionStatus
-        isVisible={isCollapsed}
-        connectionStatus={connectionStatus}
-        onReconnect={reconnect}
-        isDarkMode={isDarkMode}
-      />
-
-      { /* Mindpilot Logo */}
-      <Branding />
-
+      </PanZoomContainer>
     </div>
   );
-}
 
-export default App;
+  const editPanelContent = (
+    <div className={`h-full flex flex-col ${isDarkMode ? "bg-neutral-800" : "bg-neutral-50"}`}>
+      <div className="absolute z-10 top-4 right-4 bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm rounded-lg border border-neutral-300 dark:border-neutral-500 p-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            editPanelRef.current?.collapse();
+          }}
+          className="h-8 w-8 group"
+          title="Hide editor (E)"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+      {/* Header */}
+      <div className={`relative px-4 py-6 border-b flex items-center justify-center font-medium ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-neutral-50 border-neutral-200 text-neutral-800'}`}>
+        Edit Source
+      </div>
+
+      <div className={`flex-1 p-4 ${isDarkMode ? "bg-neutral-800" : "bg-neutral-50"}`}>
+        <MermaidEditor
+          value={diagram}
+          onChange={handleDiagramChange}
+          isDarkMode={isDarkMode}
+          onFocusChange={setIsEditorFocused}
+        />
+      </div>
+      <div className={`p-2 text-xs border-t flex justify-end ${isDarkMode ? "text-neutral-400 border-neutral-700" : "text-muted-foreground border-neutral-300"}`}>
+        <span>{status}</span>
+      </div>
+    </div>
+  );
+
+  const floatingElements = (
+    <>
+      {/* Hotkey Modal */}
+      <HotkeyModal
+        isOpen={showHotkeyModal}
+        onClose={() => setShowHotkeyModal(false)}
+        isDarkMode={isDarkMode}
+        showPenTool={isPenToolEnabled}
+      />
+    </>
+  );
+
+  return (
+    <AppLayout
+      // History Panel
+      historyPanel={historyPanelContent}
+      isHistoryCollapsed={isHistoryCollapsed}
+      historyPanelSize={historyPanelSize}
+      onHistoryResize={setHistoryPanelSize}
+      onHistoryCollapse={() => {
+        setIsHistoryCollapsed(true);
+        trackPanelToggled({ panel: 'history', action: 'close' });
+      }}
+      onHistoryExpand={() => {
+        setIsHistoryCollapsed(false);
+        trackPanelToggled({ panel: 'history', action: 'open' });
+      }}
+      historyPanelRef={historyPanelRef}
+
+      // Center Content
+      centerContent={centerContent}
+
+      // Edit Panel
+      editPanel={editPanelContent}
+      isEditCollapsed={isEditCollapsed}
+      editPanelSize={editPanelSize}
+      onEditResize={setEditPanelSize}
+      onEditCollapse={() => {
+        setIsEditCollapsed(true);
+        trackPanelToggled({ panel: 'editor', action: 'close' });
+        // Fit to screen when editor is collapsed
+        setTimeout(() => {
+          if (!hasManuallyZoomed) {
+            handleFitToScreen(true);
+          } else {
+            setHasManuallyZoomed(false);
+          }
+        }, 300);
+      }}
+      onEditExpand={() => {
+        setIsEditCollapsed(false);
+        trackPanelToggled({ panel: 'editor', action: 'open' });
+        // Fit to screen when editor is expanded
+        setTimeout(() => {
+          if (!hasManuallyZoomed) {
+            handleFitToScreen(true);
+          } else {
+            setHasManuallyZoomed(false);
+          }
+        }, 300);
+      }}
+      editPanelRef={editPanelRef}
+
+      // Floating elements
+      floatingElements={floatingElements}
+    />
+  );
+}

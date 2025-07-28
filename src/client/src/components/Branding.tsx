@@ -1,21 +1,15 @@
-import React from 'react';
 import { BRANDING } from '@/constants/app';
 
 interface BrandingProps {
   className?: string;
 }
 
-export const Branding: React.FC<BrandingProps> = ({ className = '' }) => {
+export function Branding({ className = '' }: BrandingProps) {
   return (
-    <div
-      className={`absolute bottom-4 right-6 pointer-events-none flex items-center ${className}`}
-      style={{ height: '42px' }}
-    >
-      <div className="text-1 text-xs font-normal text-right text-neutral-500 dark:text-gray-400">
+    <div className={`pointer-events-none flex items-center ${className}`}>
+      <div className="text-m font-normal text-neutral-500 dark:text-neutral-400">
         {BRANDING.displayName}
       </div>
     </div>
   );
-};
-
-export default Branding;
+}

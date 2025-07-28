@@ -4,8 +4,6 @@ import Fastify, {
   FastifyReply,
 } from "fastify";
 import fastifyStatic from "@fastify/static";
-import fastifyWebsocket from "@fastify/websocket";
-import { WebSocket } from "ws";
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,14 +13,12 @@ import { setMaxListeners } from "events";
 import { httpLogger as logger } from "../shared/logger.js";
 import {
   RenderResult,
-  MCPClient,
-  DiagramBroadcast,
-  ClientMessage,
-  ServerMessage,
   ServerStatus,
 } from "../shared/types.js";
 import { renderMermaid } from "../shared/renderer.js";
 import { validateMermaidSyntax } from "../shared/validator.js";
+import { HistoryService } from "../shared/historyService.js";
+import { detectGitRepo } from "../shared/gitRepoDetector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,16 +26,18 @@ const __dirname = path.dirname(__filename);
 export class SingletonHTTPServer {
   private fastify: FastifyInstance | null = null;
   private port: number;
-  private browserConnections: Set<any> = new Set(); // Track browser WebSocket connections
-  private lastDiagram: DiagramBroadcast | null = null;
   private startTime: Date = new Date();
   private lastMcpActivity: Date = new Date(); // Track last MCP client activity
-  private shutdownTimer: NodeJS.Timeout | null = null;
-  private readonly SHUTDOWN_DELAY_MS = 5000; // 5 seconds grace period
   private readonly MCP_TIMEOUT_MS = 60000; // 60 seconds MCP timeout
+  private disableAnalytics: boolean;
+  private dataPath: string | undefined;
+  private historyService: HistoryService;
 
-  constructor(port: number = 4000) {
+  constructor(port: number = 4000, disableAnalytics: boolean = false, dataPath?: string) {
     this.port = port;
+    this.disableAnalytics = disableAnalytics;
+    this.dataPath = dataPath;
+    this.historyService = new HistoryService(dataPath);
   }
 
   async start(): Promise<void> {
@@ -55,8 +53,7 @@ export class SingletonHTTPServer {
 
     try {
       await this.fastify.listen({ port: this.port, host: "0.0.0.0" });
-      logger.info(`Singleton HTTP server started on port ${this.port}`);
-      this.cancelShutdownTimer();
+      logger.info(`HTTP server started on port ${this.port}`);
 
       // Start checking for shutdown periodically
       setInterval(() => {
@@ -70,9 +67,6 @@ export class SingletonHTTPServer {
 
   private async setupRoutes() {
     if (!this.fastify) return;
-
-    // Register WebSocket plugin
-    await this.fastify.register(fastifyWebsocket);
 
     // Serve static files in production mode
     const isProduction = process.env.NODE_ENV !== "development";
@@ -89,6 +83,14 @@ export class SingletonHTTPServer {
 
         this.fastify.get(
           "/",
+          async (request: FastifyRequest, reply: FastifyReply) => {
+            return reply.sendFile("index.html");
+          },
+        );
+
+        // Handle /artifacts/:id route for direct diagram access
+        this.fastify.get(
+          "/artifacts/:id",
           async (request: FastifyRequest, reply: FastifyReply) => {
             return reply.sendFile("index.html");
           },
@@ -118,7 +120,6 @@ export class SingletonHTTPServer {
 
         return reply.send({
           serverRunning: true,
-          browserConnections: this.browserConnections.size,
           mcpActive: mcpActiveRecently,
           lastMcpActivitySecondsAgo: Math.floor(
             (Date.now() - this.lastMcpActivity.getTime()) / 1000,
@@ -126,6 +127,7 @@ export class SingletonHTTPServer {
           secondsUntilShutdown,
           uptime: Math.floor((Date.now() - this.startTime.getTime()) / 1000),
           port: this.port,
+          disableAnalytics: this.disableAnalytics,
         });
       },
     );
@@ -135,7 +137,6 @@ export class SingletonHTTPServer {
       "/api/keepalive",
       async (request: FastifyRequest, reply: FastifyReply) => {
         this.lastMcpActivity = new Date();
-        this.cancelShutdownTimer(); // Cancel any pending shutdown
         logger.debug("MCP keepalive received");
         return reply.send({ status: "ok", timestamp: this.lastMcpActivity });
       },
@@ -146,36 +147,30 @@ export class SingletonHTTPServer {
       "/api/render",
       async (request: FastifyRequest, reply: FastifyReply) => {
         try {
-          const { diagram, background, clientId, clientName } =
+          const { diagram, background, clientId, clientName, workingDir, title } =
             request.body as any;
           const result = await renderMermaid(diagram, background);
 
           // Update MCP activity
           this.lastMcpActivity = new Date();
-          this.cancelShutdownTimer(); // Cancel any pending shutdown
 
-          // Check if we need to open a browser
-          logger.info("About to check browser visibility", {
-            browserCount: this.browserConnections.size,
-          });
-          const hasVisibleBrowser = await this.checkBrowserVisibility();
-          logger.info("Visibility check result", { hasVisibleBrowser });
-          if (!hasVisibleBrowser) {
-            logger.info("No visible browsers detected, opening new tab");
-            this.openBrowser();
+          // Save to history if successful and get the diagram ID
+          let diagramId: string | undefined;
+          if (result.type === "success" && workingDir && title) {
+            try {
+              const collection = await detectGitRepo(workingDir);
+              const savedEntry = await this.historyService.saveDiagram(diagram, title, collection);
+              diagramId = savedEntry.id;
+              logger.info(`Saved diagram "${title}" with ID ${diagramId} to collection: ${collection || 'uncollected'}`);
+            } catch (error) {
+              logger.error("Failed to save diagram to history", { error });
+              // Don't fail the render if history save fails
+            }
           }
 
-          // Broadcast to all WebSocket clients
-          this.broadcastToClients({
-            type: "render_result",
-            clientId,
-            clientName,
-            diagram: result.diagram,
-            svg: result.svg,
-            error: result.error,
-            details: result.details,
-            background: result.background,
-          });
+          // Always open a new browser tab for each diagram
+          logger.info("Opening new browser tab for diagram", { diagramId });
+          this.openBrowser(diagramId);
 
           return reply.send(result);
         } catch (error) {
@@ -198,147 +193,109 @@ export class SingletonHTTPServer {
       },
     );
 
-    // WebSocket route (for browser connections only)
-    const self = this;
-    this.fastify.register(async function (fastify) {
-      fastify.get("/ws", { websocket: true }, (socket, request) => {
-        // Track browser connections (for broadcasting only)
-        self.browserConnections.add(socket);
-        logger.info("Browser connected via WebSocket", {
-          totalBrowsers: self.browserConnections.size,
-        });
-
-        // Send last diagram if available to new connections
-        if (self.lastDiagram) {
-          socket.socket.send(JSON.stringify(self.lastDiagram));
+    // History API routes
+    this.fastify.get(
+      "/api/history",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { collection } = request.query as any;
+          const diagrams = await this.historyService.getDiagrams(collection);
+          return reply.send(diagrams);
+        } catch (error) {
+          logger.error("Failed to get history", { error });
+          return reply.code(500).send({ error: "Failed to get history" });
         }
-
-        // Listen to events on the actual WebSocket, not the stream wrapper
-        socket.socket.on("message", async (data) => {
-          try {
-            const message: ClientMessage = JSON.parse(data.toString());
-            logger.debug("WebSocket message from browser", {
-              messageType: message.type,
-            });
-
-            switch (message.type) {
-              case "ping":
-                socket.socket.send(JSON.stringify({ type: "pong" }));
-                break;
-              default:
-                logger.debug("Ignoring message type from browser", {
-                  type: message.type,
-                });
-            }
-          } catch (error) {
-            logger.error("WebSocket message error", { error });
-          }
-        });
-
-        socket.socket.on("close", () => {
-          self.browserConnections.delete(socket);
-          logger.info("Browser disconnected", {
-            remainingBrowsers: self.browserConnections.size,
-          });
-        });
-
-        socket.socket.on("error", (error) => {
-          logger.error("WebSocket error", { error });
-          self.browserConnections.delete(socket);
-        });
-      });
-    });
-  }
-
-  private broadcastToClients(message: DiagramBroadcast) {
-    // Cache the last diagram
-    this.lastDiagram = message;
-
-    // Broadcast to all browser connections
-    const messageStr = JSON.stringify(message);
-    let sentCount = 0;
-    this.browserConnections.forEach((socket) => {
-      try {
-        socket.socket.send(messageStr);
-        sentCount++;
-      } catch (err) {
-        // Socket might be closed
-        logger.debug("Failed to send to browser socket", { err });
-      }
-    });
-    logger.debug("Broadcast diagram to browsers", {
-      sentCount,
-      totalBrowsers: this.browserConnections.size,
-      messageLength: messageStr.length,
-    });
-  }
-
-  private async checkBrowserVisibility(): Promise<boolean> {
-    if (this.browserConnections.size === 0) {
-      logger.debug("No browsers connected, returning false");
-      return false; // No browsers connected
-    }
-
-    logger.debug("Starting browser visibility check", {
-      browserCount: this.browserConnections.size,
-    });
-
-    // Create a promise for each connected browser
-    const visibilityPromises = Array.from(this.browserConnections).map(
-      (socket, index) => {
-        return new Promise<boolean>((resolve) => {
-          const browserId = `browser-${index}`;
-          const timeout = setTimeout(() => {
-            logger.debug(`Browser ${browserId} timed out (assumed hidden)`);
-            socket.socket.off("message", messageHandler); // Remove handler on timeout
-            resolve(false); // Assume hidden if no response in 500ms
-          }, 500);
-
-          const messageHandler = (data: any) => {
-            try {
-              const response = JSON.parse(data.toString());
-              if (response.type === "visibility_response") {
-                clearTimeout(timeout);
-                socket.socket.off("message", messageHandler);
-                logger.debug(`Browser ${browserId} responded`, {
-                  isVisible: response.isVisible,
-                });
-                resolve(response.isVisible === true);
-              }
-            } catch (error) {
-              // Ignore parse errors
-            }
-          };
-
-          socket.socket.on("message", messageHandler);
-          socket.socket.send(JSON.stringify({ type: "visibility_query" }));
-          logger.debug(`Sent visibility query to ${browserId}`);
-        });
       },
     );
 
-    // Check if any browser is visible
-    const results = await Promise.all(visibilityPromises);
-    const hasVisibleBrowser = results.some((isVisible) => isVisible);
+    this.fastify.get(
+      "/api/collections",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const collections = await this.historyService.getCollections();
+          return reply.send(collections);
+        } catch (error) {
+          logger.error("Failed to get collections", { error });
+          return reply.code(500).send({ error: "Failed to get collections" });
+        }
+      },
+    );
 
-    logger.info("Browser visibility check complete", {
-      totalBrowsers: this.browserConnections.size,
-      responses: results,
-      hasVisibleBrowser,
-    });
+    this.fastify.post(
+      "/api/collections",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { name } = request.body as any;
+          await this.historyService.createCollection(name);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to create collection", { error });
+          return reply.code(500).send({ error: "Failed to create collection" });
+        }
+      },
+    );
 
-    return hasVisibleBrowser;
+    this.fastify.put(
+      "/api/history/:id/collection",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { id } = request.params as any;
+          const { collection } = request.body as any;
+          await this.historyService.moveDiagram(id, collection);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to move diagram", { error });
+          return reply.code(500).send({ error: "Failed to move diagram" });
+        }
+      },
+    );
+
+    this.fastify.patch(
+      "/api/history/:id",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { id } = request.params as any;
+          const updates = request.body as any;
+          logger.info(`Updating diagram with id: ${id}`, updates);
+          await this.historyService.updateDiagram(id, updates);
+          logger.info(`Successfully updated diagram: ${id}`);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to update diagram", { error, id: (request.params as any).id });
+          return reply.code(500).send({ error: "Failed to update diagram" });
+        }
+      },
+    );
+
+    this.fastify.delete(
+      "/api/history/:id",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { id } = request.params as any;
+          logger.info(`Deleting diagram with id: ${id}`);
+          await this.historyService.deleteDiagram(id);
+          logger.info(`Successfully deleted diagram: ${id}`);
+          return reply.send({ success: true });
+        } catch (error) {
+          logger.error("Failed to delete diagram", { error, id: (request.params as any).id });
+          return reply.code(500).send({ error: "Failed to delete diagram" });
+        }
+      },
+    );
   }
 
-  private async openBrowser() {
+
+  private async openBrowser(diagramId?: string) {
     const isProduction = process.env.NODE_ENV !== "development";
-    const url = isProduction
+    const baseUrl = isProduction
       ? `http://localhost:${this.port}`
       : `http://localhost:5173`;
+    
+    const url = diagramId ? `${baseUrl}/artifacts/${diagramId}` : baseUrl;
 
     try {
       await open(url);
-      logger.info("Opened browser", { url });
+      logger.info("Opened browser", { url, diagramId });
     } catch (error) {
       logger.error("Failed to open browser", { error });
     }
@@ -350,41 +307,17 @@ export class SingletonHTTPServer {
       Date.now() - this.lastMcpActivity.getTime() >= this.MCP_TIMEOUT_MS;
 
     if (mcpInactive) {
-      logger.info(
-        `No recent MCP activity. Server will shut down in ${this.SHUTDOWN_DELAY_MS / 1000} seconds...`,
-      );
-
-      this.shutdownTimer = setTimeout(() => {
-        // Double-check MCP activity before shutdown
-        const stillMcpInactive =
-          Date.now() - this.lastMcpActivity.getTime() >= this.MCP_TIMEOUT_MS;
-
-        if (stillMcpInactive) {
-          logger.info("Shutting down singleton server - MCP client inactive");
-          this.stop();
-        } else {
-          logger.info("Shutdown cancelled - MCP activity detected");
-        }
-      }, this.SHUTDOWN_DELAY_MS);
-    }
-  }
-
-  private cancelShutdownTimer() {
-    if (this.shutdownTimer) {
-      clearTimeout(this.shutdownTimer);
-      this.shutdownTimer = null;
+      logger.info("Shutting down server - MCP client inactive for 60 seconds");
+      this.stop();
     }
   }
 
   async stop(): Promise<void> {
-    this.cancelShutdownTimer();
-
     if (this.fastify) {
       await this.fastify.close();
       this.fastify = null;
     }
 
-    this.browserConnections.clear();
     process.exit(0);
   }
 
@@ -433,10 +366,6 @@ export class SingletonHTTPServer {
   getPort(): number {
     return this.port;
   }
-
-  getBrowserConnectionCount(): number {
-    return this.browserConnections.size;
-  }
 }
 
 // Helper function to check if a server is already running on a port
@@ -449,7 +378,7 @@ export async function isPortInUse(port: number, signal?: AbortSignal): Promise<b
   }
 }
 
-// Start singleton server if run directly
+// Start server if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { parseArgs } = await import('node:util');
   
@@ -462,12 +391,20 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         type: 'string',
         short: 'p',
         default: '4000'
+      },
+      'disable-analytics': {
+        type: 'boolean',
+        default: false
+      },
+      'data-path': {
+        type: 'string',
+        default: undefined
       }
     }
   });
   
   const port = parseInt(values.port!, 10);
-  const server = new SingletonHTTPServer(port);
+  const server = new SingletonHTTPServer(port, values['disable-analytics'] as boolean, values['data-path'] as string | undefined);
 
   server.start().catch((error) => {
     logger.error("Failed to start server", { error });

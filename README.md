@@ -79,6 +79,39 @@ In the `Command to run MCPserver` field enter `npx @mindpilot/mcp@latest` and cl
 
 ## Configuration Options
 - **Port**: The server defaults to port 4000 but can be configured using the `--port` command line switch.
+- **Data Path**: By default, diagrams are saved to `~/.mindpilot/data/`. You can specify a custom location using the `--data-path` command line switch.
+
+## Multi-Client Support
+
+Mindpilot intelligently handles multiple AI assistants running simultaneously. When you have multiple Claude Desktop windows or IDE instances open:
+
+- The first assistant to use Mindpilot starts a shared web server
+- Additional assistants automatically connect to the existing server
+- All assistants share the same diagram history and web interface
+- The server automatically shuts down a minute after the last assistant disconnects
+
+This means you can work with multiple AI assistants at once without port conflicts, and they'll all contribute to the same collection of diagrams.
+
+## Anonymous Usage Tracking
+
+Mindpilot MCP collects anonymous usage data to help us understand how the product is being used and improve the user experience.
+
+### Disabling Analytics
+If you prefer not to share anonymous usage data, you can disable analytics by adding the `--disable-analytics` flag to your MCP configuration:
+
+**Claude Code:**
+```bash
+claude mcp add mindpilot -- npx @mindpilot/mcp@latest --disable-analytics
+```
+
+**Other IDEs:**
+Add `"--disable-analytics"` to the args array in your configuration:
+```json
+{
+  "command": "npx",
+  "args": ["@mindpilot/mcp@latest", "--disable-analytics"]
+}
+```
 
 ## Using the MCP server
 After configuring the MCP in your coding agent you can make requests like "create a diagram about x" and it should use the MCP server to render Mermaid diagrams for you in a browser connected to the MCP server.
@@ -100,6 +133,20 @@ If you use port 4000 for another service you can configure the MCP to use a diff
 
 Claude Code example:
 `claude mcp add mindpilot -- npx @mindpilot/mcp@latest --port 5555`
+
+### Custom Data Path
+To save diagrams to a custom location (e.g., for syncing with cloud storage):
+
+Claude Code example:
+`claude mcp add mindpilot -- npx @mindpilot/mcp@latest --data-path /path/to/custom/location`
+
+Other IDEs:
+```json
+{
+  "command": "npx",
+  "args": ["@mindpilot/mcp@latest", "--data-path", "/path/to/custom/location"]
+}
+```
 
 ### asdf Issues
 If you use `asdf` as a version manager and have trouble getting MCPs to work (not just mindpilot), you may need to set a "global" nodejs version from your home directory.

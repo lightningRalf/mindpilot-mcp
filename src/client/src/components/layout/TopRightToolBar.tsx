@@ -1,0 +1,34 @@
+import { Button } from "@/components/ui/button";
+import { Sun, Moon } from "lucide-react";
+
+interface TopRightToolBarProps {
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
+  className?: string;
+}
+
+export function TopRightToolBar({
+  isDarkMode,
+  onToggleTheme,
+  className = ''
+}: TopRightToolBarProps) {
+  return (
+    <div className={`absolute z-10 top-4 right-4 flex items-center gap-2 bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm rounded-lg border border-neutral-200 dark:border-neutral-600 p-1 ${className}`}>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleTheme}
+        title={
+          isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+        }
+        className="h-8 w-8"
+      >
+        {isDarkMode ? (
+          <Sun className="h-4 w-4" />
+        ) : (
+          <Moon className="h-4 w-4" />
+        )}
+      </Button>
+    </div>
+  );
+}
