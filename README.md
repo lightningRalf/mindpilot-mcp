@@ -5,7 +5,7 @@
 
 See through your agent's eyes. Visualize legacy code, inspect complex flows, understand everything.
 
-![Screenshot](https://raw.githubusercontent.com/abrinsmead/mindpilot-mcp/main/mindpilot-mcp.png)
+![Screenshot](https://raw.githubusercontent.com/abrinsmead/mindpilot-mcp/main/mindpilot-mcp.png?bust-cache=1)
 
 ## Why Mindpilot?
 - **Visualize Anything**: Use your coding agent to generate on-demand architecture, code, and process diagrams to view your code from different perspectives.
