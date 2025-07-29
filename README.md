@@ -23,6 +23,11 @@ Node.js v20.0.0 or higher.
 `claude mcp add mindpilot -- npx @mindpilot/mcp@latest`
 
 ### Cursor
+
+#### One Click Install
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=mindpilot&config=eyJjb21tYW5kIjoibnB4IEBtaW5kcGlsb3QvbWNwQGxhdGVzdCJ9)
+
+#### Manual Install
 Under `Settings` > `Cursor Settings` > `MCP` > Click `Add new global MCP server` and configure mindpilot in the `mcpServers` object.
 
 ```
@@ -37,6 +42,14 @@ Under `Settings` > `Cursor Settings` > `MCP` > Click `Add new global MCP server`
 ```
 
 ### VS Code
+
+#### One Click Installs
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Mindpilot-0098FF?style=flat-square&logo=visualstudiocode&logoColor=ffffff)](vscode:mcp/install?%7B%22name%22%3A%22Mindpilot%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22%40mindpilot%2Fmcp%22%5D%7D)
+
+[![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Mindpilot-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=ffffff)](vscode-insiders:mcp/install?%7B%22name%22%3A%22Mindpilot%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22%40mindpilot%2Fmcp%22%5D%7D)
+
+#### Manual Install
+
 Follow the instructions here for enabling MCPs in VS Code:  https://code.visualstudio.com/docs/copilot/chat/mcp-servers
 
 Go to `Settings` > `Features` > `MCP`, then click `Edit in settings json`
@@ -85,12 +98,12 @@ In the `Command to run MCPserver` field enter `npx @mindpilot/mcp@latest` and cl
 
 Mindpilot intelligently handles multiple AI assistants running simultaneously. When you have multiple Claude Desktop windows or IDE instances open:
 
-- The first assistant to use Mindpilot starts a shared web server
+- The first mcp client to use Mindpilot starts a shared web server
 - Additional assistants automatically connect to the existing server
 - All assistants share the same diagram history and web interface
-- The server automatically shuts down a minute after the last assistant disconnects
+- The server will automatically shuts down a minute after the last MCP clinet disconnects
 
-This means you can work with multiple AI assistants at once without port conflicts, and they'll all contribute to the same collection of diagrams.
+This means you can work with multiple MCP hosts at once without port conflicts, and they'll all contribute to the same collection of diagrams.
 
 ## Anonymous Usage Tracking
 
