@@ -1,7 +1,7 @@
 # Mindpilot MCP
-![GitHub Repo stars](https://img.shields.io/github/stars/abrinsmead/mindpilot-mcp)
-![NPM Version](https://img.shields.io/npm/v/@mindpilot/mcp)
-![GitHub License](https://img.shields.io/github/license/abrinsmead/mindpilot-mcp)
+[![GitHub Repo stars](https://img.shields.io/github/stars/abrinsmead/mindpilot-mcp)](https://github.com/abrinsmead/mindpilot-mcp)
+[![NPM Version](https://img.shields.io/npm/v/@mindpilot/mcp)](https://www.npmjs.com/package/@mindpilot/mcp)
+[![GitHub License](https://img.shields.io/github/license/abrinsmead/mindpilot-mcp)](https://github.com/abrinsmead/mindpilot-mcp/blob/main/LICENSE)
 
 See through your agent's eyes. Visualize legacy code, inspect complex flows, understand everything.
 
@@ -24,10 +24,14 @@ Node.js v20.0.0 or higher.
 
 ### Cursor
 
-#### One Click Install
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=mindpilot&config=eyJjb21tYW5kIjoibnB4IEBtaW5kcGlsb3QvbWNwQGxhdGVzdCJ9)
+#### One-click Installer
+<a href="cursor://anysphere.cursor-deeplink/mcp/install?name=mindpilot&config=eyJjb21tYW5kIjoibnB4IEBtaW5kcGlsb3QvbWNwQGxhdGVzdCJ9">
+  <img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install MCP Server" />
+</a>
 
-#### Manual Install
+*Click the button above to automatically install Mindpilot in Cursor (requires Cursor to be installed)*
+
+#### Manual Configuration
 Under `Settings` > `Cursor Settings` > `MCP` > Click `Add new global MCP server` and configure mindpilot in the `mcpServers` object.
 
 ```
@@ -43,12 +47,18 @@ Under `Settings` > `Cursor Settings` > `MCP` > Click `Add new global MCP server`
 
 ### VS Code
 
-#### One Click Installs
-[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Mindpilot-0098FF?style=flat-square&logo=visualstudiocode&logoColor=ffffff)](vscode:mcp/install?%7B%22name%22%3A%22Mindpilot%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22%40mindpilot%2Fmcp%22%5D%7D)
+#### One-click Installers
+<a href="vscode:mcp/install?%7B%22name%22%3A%22Mindpilot%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22%40mindpilot%2Fmcp%22%5D%7D">
+  <img src="https://img.shields.io/badge/VS_Code-Install_Mindpilot-0098FF?style=flat-square&logo=visualstudiocode&logoColor=ffffff" alt="Install in VS Code" />
+</a>
 
-[![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Mindpilot-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=ffffff)](vscode-insiders:mcp/install?%7B%22name%22%3A%22Mindpilot%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22%40mindpilot%2Fmcp%22%5D%7D)
+<a href="vscode-insiders:mcp/install?%7B%22name%22%3A%22Mindpilot%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22%40mindpilot%2Fmcp%22%5D%7D">
+  <img src="https://img.shields.io/badge/VS_Code_Insiders-Install_Mindpilot-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=ffffff" alt="Install in VS Code Insiders" />
+</a>
 
-#### Manual Install
+*Click the buttons above to automatically install Mindpilot (requires VS Code/VS Code Insiders to be installed)*
+
+#### Manual Configuration
 
 Follow the instructions here for enabling MCPs in VS Code:  https://code.visualstudio.com/docs/copilot/chat/mcp-servers
 
