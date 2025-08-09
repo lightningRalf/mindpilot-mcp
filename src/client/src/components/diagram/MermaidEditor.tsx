@@ -1,7 +1,11 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import Editor, { Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { useAnalytics } from '@/hooks';
+
+export interface MermaidEditorHandle {
+  focus: () => void;
+}
 
 interface MermaidEditorProps {
   value: string;
@@ -10,11 +14,21 @@ interface MermaidEditorProps {
   onFocusChange?: (isFocused: boolean) => void;
 }
 
-export function MermaidEditor({ value, onChange, isDarkMode, onFocusChange }: MermaidEditorProps) {
+export const MermaidEditor = forwardRef<MermaidEditorHandle, MermaidEditorProps>(
+  ({ value, onChange, isDarkMode, onFocusChange }, ref) => {
   const monacoRef = useRef<Monaco | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const { trackDiagramUpdated } = useAnalytics();
   const lastTrackedRef = useRef<number>(Date.now());
+
+  // Expose focus method via ref
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+      }
+    }
+  }), []);
 
   const handleEditorWillMount = (monaco: Monaco) => {
     // Define custom dark theme matching the app's dark mode
@@ -217,4 +231,6 @@ export function MermaidEditor({ value, onChange, isDarkMode, onFocusChange }: Me
       />
     </div>
   );
-}
+});
+
+MermaidEditor.displayName = 'MermaidEditor';

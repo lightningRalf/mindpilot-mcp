@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useDiagramContext, useThemeContext } from "@/contexts";
 import { HistoryPanel, HistoryPanelRef } from "@/components/HistoryPanel";
 import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
-import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, DrawingCanvas } from "@/components/diagram";
+import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, MermaidEditorHandle, DrawingCanvas } from "@/components/diagram";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
@@ -37,6 +37,7 @@ export function App() {
   const editPanelRef = useRef<any>(null);
   const historyPanelRef = useRef<any>(null);
   const historyPanelMethodsRef = useRef<HistoryPanelRef>(null);
+  const editorRef = useRef<MermaidEditorHandle>(null);
   const saveDiagramTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use the pan/zoom hook
@@ -220,6 +221,17 @@ export function App() {
   // Keyboard shortcuts
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
     const baseShortcuts: KeyboardShortcut[] = [
+      // Prevent Ctrl/Cmd+A from selecting all page elements (except in Monaco editor)
+      {
+        key: 'a',
+        ctrl: true,
+        description: 'Select all (editor only)',
+        preventDefault: true,
+        isEnabled: () => !isEditorFocused, // Only prevent when editor is NOT focused
+        handler: () => {
+          // Do nothing - just prevent the default browser select all
+        }
+      },
       // Search focus
       {
         key: '/',
@@ -459,6 +471,7 @@ export function App() {
 
       <div className={`flex-1 p-4 ${isDarkMode ? "bg-neutral-800" : "bg-neutral-50"}`}>
         <MermaidEditor
+          ref={editorRef}
           value={diagram}
           onChange={handleDiagramChange}
           isDarkMode={isDarkMode}
