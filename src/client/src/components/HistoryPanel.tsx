@@ -18,6 +18,7 @@ export interface HistoryPanelProps {
 
 export interface HistoryPanelRef {
   getNthDiagramInExpandedGroups: (n: number) => string | null;
+  focusSearch: () => void;
 }
 
 export const HistoryPanel = forwardRef<HistoryPanelRef, HistoryPanelProps>(({
@@ -38,6 +39,7 @@ export const HistoryPanel = forwardRef<HistoryPanelRef, HistoryPanelProps>(({
   const [showCloudModal, setShowCloudModal] = useState(false);
   const [shouldScrollToSelected, setShouldScrollToSelected] = useState(false);
   const hasHandledInitialLoad = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Use the history hook
   const {
@@ -67,7 +69,10 @@ export const HistoryPanel = forwardRef<HistoryPanelRef, HistoryPanelProps>(({
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
-    getNthDiagramInExpandedGroups
+    getNthDiagramInExpandedGroups,
+    focusSearch: () => {
+      searchInputRef.current?.focus();
+    }
   }), [getNthDiagramInExpandedGroups]);
 
   // Extract ordered list of diagram IDs and notify parent
@@ -165,6 +170,7 @@ export const HistoryPanel = forwardRef<HistoryPanelRef, HistoryPanelProps>(({
 
       {/* Search Bar */}
       <SearchBar
+        ref={searchInputRef}
         value={searchQuery}
         onChange={setSearchQuery}
         isDarkMode={isDarkMode}

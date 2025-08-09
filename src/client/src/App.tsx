@@ -220,6 +220,16 @@ export function App() {
   // Keyboard shortcuts
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
     const baseShortcuts: KeyboardShortcut[] = [
+      // Search focus
+      {
+        key: '/',
+        description: 'Focus search bar',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => {
+          historyPanelMethodsRef.current?.focusSearch();
+        }
+      },
       // Mode toggle
       {
         key: 'd',
@@ -399,7 +409,13 @@ export function App() {
         isPanning={isPanning}
         isZooming={isZooming}
         isDrawingMode={isPenToolEnabled && isDrawingMode}
-        onMouseDown={isPenToolEnabled && isDrawingMode ? undefined : handleMouseDown}
+        onMouseDown={isPenToolEnabled && isDrawingMode ? undefined : (e) => {
+          // Blur any focused element when clicking on canvas
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+          handleMouseDown(e);
+        }}
         onMouseMove={isPenToolEnabled && isDrawingMode ? undefined : handleMouseMove}
         onMouseUp={isPenToolEnabled && isDrawingMode ? undefined : handleMouseUp}
         onMouseLeave={isPenToolEnabled && isDrawingMode ? undefined : handleMouseLeave}
