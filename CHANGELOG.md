@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.4.1
+- Fix Ctrl/Cmd+A to only select text in Monaco editor when focused
+- Prevent Ctrl/Cmd+A from selecting entire page content
+- Improve keyboard shortcut handling for better editor experience
+
 ## 0.4.0
 - Add "/" hotkey to focus search in history panel
 - Remove one-click install badges (moved to documentation)
