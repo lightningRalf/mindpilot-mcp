@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useDiagramContext, useThemeContext } from "@/contexts";
 import { HistoryPanel, HistoryPanelRef } from "@/components/HistoryPanel";
 import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
-import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, MermaidEditorHandle, DrawingCanvas } from "@/components/diagram";
+import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, MermaidEditorHandle, DrawingCanvas, DiagramContextMenu } from "@/components/diagram";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
@@ -414,38 +414,40 @@ export function App() {
         } : undefined}
       />
 
-      <PanZoomContainer
-        ref={containerRef}
-        zoom={zoom}
-        pan={pan}
-        isPanning={isPanning}
-        isZooming={isZooming}
-        isDrawingMode={isPenToolEnabled && isDrawingMode}
-        onMouseDown={isPenToolEnabled && isDrawingMode ? undefined : (e) => {
-          // Blur any focused element when clicking on canvas
-          if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-          }
-          handleMouseDown(e);
-        }}
-        onMouseMove={isPenToolEnabled && isDrawingMode ? undefined : handleMouseMove}
-        onMouseUp={isPenToolEnabled && isDrawingMode ? undefined : handleMouseUp}
-        onMouseLeave={isPenToolEnabled && isDrawingMode ? undefined : handleMouseLeave}
-      >
-        <DiagramRenderer
-          ref={previewRef}
-          onFitToScreen={handleDiagramFitToScreen}
-        />
-        {isPenToolEnabled && (
-          <DrawingCanvas
-            isDrawingMode={isDrawingMode}
-            zoom={zoom}
-            isDarkMode={isDarkMode}
-            clearDrawingTrigger={clearDrawingTrigger}
-            onDrawingChange={setHasDrawing}
+      <DiagramContextMenu>
+        <PanZoomContainer
+          ref={containerRef}
+          zoom={zoom}
+          pan={pan}
+          isPanning={isPanning}
+          isZooming={isZooming}
+          isDrawingMode={isPenToolEnabled && isDrawingMode}
+          onMouseDown={isPenToolEnabled && isDrawingMode ? undefined : (e) => {
+            // Blur any focused element when clicking on canvas
+            if (document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            handleMouseDown(e);
+          }}
+          onMouseMove={isPenToolEnabled && isDrawingMode ? undefined : handleMouseMove}
+          onMouseUp={isPenToolEnabled && isDrawingMode ? undefined : handleMouseUp}
+          onMouseLeave={isPenToolEnabled && isDrawingMode ? undefined : handleMouseLeave}
+        >
+          <DiagramRenderer
+            ref={previewRef}
+            onFitToScreen={handleDiagramFitToScreen}
           />
-        )}
-      </PanZoomContainer>
+          {isPenToolEnabled && (
+            <DrawingCanvas
+              isDrawingMode={isDrawingMode}
+              zoom={zoom}
+              isDarkMode={isDarkMode}
+              clearDrawingTrigger={clearDrawingTrigger}
+              onDrawingChange={setHasDrawing}
+            />
+          )}
+        </PanZoomContainer>
+      </DiagramContextMenu>
     </div>
   );
 

@@ -99,8 +99,8 @@ export function useExportDiagram({ isDarkMode }: ExportDiagramOptions) {
         // Scale for higher resolution
         ctx.scale(scale, scale);
 
-        // Set background
-        ctx.fillStyle = isDarkMode ? '#1f2937' : '#ffffff';
+        // Set background - matches the UI panels (neutral-800 in dark mode, neutral-100 in light)
+        ctx.fillStyle = isDarkMode ? '#262626' : '#f5f5f5';
         ctx.fillRect(0, 0, width, height);
 
         // Convert SVG to data URL using the clone
@@ -190,8 +190,8 @@ export function useExportDiagram({ isDarkMode }: ExportDiagramOptions) {
           throw new Error('Failed to render diagram');
         }
 
-        // Set background color on SVG
-        svgElement.style.backgroundColor = isDarkMode ? '#1f2937' : '#ffffff';
+        // Set background color on SVG - matches the UI panels
+        svgElement.style.backgroundColor = isDarkMode ? '#262626' : '#f5f5f5';
 
         // Convert SVG to string
         const svgData = new XMLSerializer().serializeToString(svgElement);
@@ -236,5 +236,172 @@ export function useExportDiagram({ isDarkMode }: ExportDiagramOptions) {
     }
   }, []);
 
-  return { exportAsPng, exportAsSvg, exportAsMermaid };
+  const copyImageToClipboard = useCallback(async (diagram: string, title: string) => {
+    try {
+      // Initialize mermaid with appropriate theme
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: isDarkMode ? 'dark' : 'default',
+        securityLevel: 'strict',
+        suppressErrorRendering: true,
+        flowchart: {
+          useMaxWidth: false,
+          htmlLabels: true,
+        },
+      });
+
+      // Generate unique ID for rendering
+      const id = `mermaid-export-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create a temporary container for rendering
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      try {
+        // Render the diagram
+        const { svg } = await mermaid.render(id, diagram);
+        tempDiv.innerHTML = svg;
+
+        // Get the SVG element
+        const svgElement = tempDiv.querySelector('svg');
+        if (!svgElement) {
+          throw new Error('Failed to render diagram');
+        }
+
+        // Clone the SVG to avoid modifying the original
+        const svgClone = svgElement.cloneNode(true) as SVGElement;
+        
+        // Set explicit dimensions and viewBox
+        const bbox = svgElement.getBBox();
+        const width = bbox.width || 800;
+        const height = bbox.height || 600;
+        svgClone.setAttribute('width', width.toString());
+        svgClone.setAttribute('height', height.toString());
+        if (!svgClone.getAttribute('viewBox')) {
+          svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        }
+        
+        // Add XML namespace
+        svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        
+        // Remove any external references that might taint the canvas
+        const useElements = svgClone.querySelectorAll('use');
+        useElements.forEach(use => {
+          const href = use.getAttribute('href') || use.getAttribute('xlink:href');
+          if (href && href.startsWith('http')) {
+            use.remove();
+          }
+        });
+        
+        const images = svgClone.querySelectorAll('image');
+        images.forEach(img => {
+          const href = img.getAttribute('href') || img.getAttribute('xlink:href');
+          if (href && href.startsWith('http')) {
+            img.remove();
+          }
+        });
+        
+        const styles = svgClone.querySelectorAll('style');
+        styles.forEach(style => {
+          if (style.textContent) {
+            style.textContent = style.textContent.replace(/@import\s+url\([^)]+\);?/g, '');
+          }
+        });
+
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        const scale = 2; // For higher resolution
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error('Failed to get canvas context');
+        }
+
+        // Scale for higher resolution
+        ctx.scale(scale, scale);
+
+        // Set background - matches the UI panels (neutral-800 in dark mode, neutral-100 in light)
+        ctx.fillStyle = isDarkMode ? '#262626' : '#f5f5f5';
+        ctx.fillRect(0, 0, width, height);
+
+        // Convert SVG to data URL using the clone
+        const svgData = new XMLSerializer().serializeToString(svgClone);
+        const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
+        const svgUrl = `data:image/svg+xml;base64,${svgBase64}`;
+
+        // Load SVG as image
+        const img = new Image();
+        
+        await new Promise<void>((resolve, reject) => {
+          img.onerror = () => {
+            reject(new Error('Failed to load SVG for clipboard'));
+          };
+          
+          img.onload = () => {
+            try {
+              ctx.drawImage(img, 0, 0, width, height);
+
+              // Convert to PNG and copy to clipboard
+              canvas.toBlob(async (blob) => {
+                if (blob) {
+                  try {
+                    // Try to use the Clipboard API
+                    if (navigator.clipboard && window.ClipboardItem) {
+                      await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                      ]);
+                      console.log('Image copied to clipboard');
+                    } else {
+                      // Fallback: download the file
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      console.warn('Clipboard API not available, downloaded file instead');
+                    }
+                  } catch (err) {
+                    // Fallback to download
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    console.error('Failed to copy to clipboard, downloaded file instead:', err);
+                  }
+                } else {
+                  console.error('Failed to create PNG blob');
+                }
+                resolve();
+              }, 'image/png');
+            } catch (error) {
+              reject(error);
+            }
+          };
+
+          img.src = svgUrl;
+        });
+      } finally {
+        // Cleanup
+        document.body.removeChild(tempDiv);
+      }
+    } catch (error) {
+      console.error('Failed to copy image to clipboard:', error);
+      // Fallback to regular export
+      exportAsPng(diagram, title);
+    }
+  }, [isDarkMode, exportAsPng]);
+
+  return { exportAsPng, exportAsSvg, exportAsMermaid, copyImageToClipboard };
 }
