@@ -66,9 +66,7 @@ export function DiagramContextMenu({ children }: DiagramContextMenuProps) {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div>
-          {children}
-        </div>
+        {children}
       </ContextMenuTrigger>
       <ContextMenuContent className={`w-56 ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-200'}`}>
         <ContextMenuItem onClick={handleCopyImage} disabled={!diagram} className={isDarkMode ? 'hover:bg-orange-500/10 focus:bg-orange-500/10' : 'hover:bg-orange-50 focus:bg-orange-50'}>

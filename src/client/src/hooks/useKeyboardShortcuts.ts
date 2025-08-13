@@ -71,6 +71,7 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
         if (modifierMatch) {
           if (shortcut.preventDefault !== false) {
             event.preventDefault();
+            event.stopPropagation(); // Stop the event from reaching other handlers
           }
           shortcut.handler(event);
           break; // Only trigger one shortcut per keypress
@@ -78,10 +79,11 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    // Use capture phase to intercept events before they reach focused elements
+    window.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, []);
 }

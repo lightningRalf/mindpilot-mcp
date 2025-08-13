@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.5.0
+- Add right-click context menu for diagram panel with copy and export options
+- Add keyboard shortcuts 'i' and 's' for quick copy image and copy source operations
+- Update hotkey modal to display new copy shortcuts
+
 ## 0.4.1
 - Fix Ctrl/Cmd+A to only select text in Monaco editor when focused
 - Prevent Ctrl/Cmd+A from selecting entire page content

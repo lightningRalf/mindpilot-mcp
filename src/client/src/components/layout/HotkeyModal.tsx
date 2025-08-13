@@ -45,6 +45,11 @@ const getShortcuts = (showPenTool: boolean): Shortcut[] => {
     shortcuts.push({ keys: "P", description: "Toggle pen/drawing mode", category: "View" });
   }
 
+  // Copy
+  shortcuts.push(
+    { keys: "I", description: "Copy image to clipboard", category: "Copy" },
+    { keys: "S", description: "Copy source to clipboard", category: "Copy" }
+  );
 
   // Help
   shortcuts.push({ keys: "?", description: "Show keyboard shortcuts", category: "Help" });

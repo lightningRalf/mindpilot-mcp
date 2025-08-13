@@ -4,12 +4,13 @@ import { ChevronRight } from "lucide-react";
 import { useDiagramContext, useThemeContext } from "@/contexts";
 import { HistoryPanel, HistoryPanelRef } from "@/components/HistoryPanel";
 import { ZoomControls, HotkeyModal, AppLayout } from "@/components/layout";
-import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, MermaidEditorHandle, DrawingCanvas, DiagramContextMenu } from "@/components/diagram";
+import { DiagramRenderer, PanZoomContainer, DiagramTitle, MermaidEditor, MermaidEditorHandle, DrawingCanvas } from "@/components/diagram";
 import { useLocalStorageBoolean, useLocalStorageNumber } from "@/hooks/useLocalStorage";
 import { useKeyboardShortcuts, usePreventBrowserZoom, KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
 import { usePanZoom } from "@/hooks/usePanZoom";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useFeatureFlag } from "@/hooks/useQueryParam";
+import { useExportDiagram } from "@/hooks";
 
 
 export function App() {
@@ -18,6 +19,7 @@ export function App() {
   const { isDarkMode, toggleTheme } = useThemeContext();
   const { trackThemeChanged, trackPanelToggled } = useAnalytics();
   const isPenToolEnabled = useFeatureFlag('xMarker'); // Pen tool enabled with ?xMarker=1
+  const { copyImageToClipboard } = useExportDiagram({ isDarkMode });
 
   // LocalStorage-backed state for UI preferences
   const [isEditCollapsed, setIsEditCollapsed] = useLocalStorageBoolean("mindpilot-mcp-edit-collapsed", true);
@@ -218,6 +220,31 @@ export function App() {
     handleSelectDiagram(prevDiagramId);
   }, [currentDiagramId, orderedDiagramIds, handleSelectDiagram]);
 
+  // Copy functions for keyboard shortcuts
+  const handleCopyImage = useCallback(async () => {
+    if (!diagram) return;
+    await copyImageToClipboard(diagram, title || 'diagram');
+  }, [diagram, title, copyImageToClipboard]);
+
+  const handleCopySource = useCallback(async () => {
+    if (!diagram) return;
+    try {
+      await navigator.clipboard.writeText(diagram);
+      console.log('Source copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy source:', err);
+      // Fallback: Select and copy text
+      const textarea = document.createElement('textarea');
+      textarea.value = diagram;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-999999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+  }, [diagram]);
+
   // Keyboard shortcuts
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
     const baseShortcuts: KeyboardShortcut[] = [
@@ -279,6 +306,23 @@ export function App() {
             editPanelRef.current?.collapse();
           }
         }
+      },
+      // Copy shortcuts
+      {
+        key: 'i',
+        description: 'Copy image to clipboard',
+        ignoreInputElements: true,
+        preventDefault: true,
+        isEnabled: () => !isEditorFocused && !isRenaming && !!diagram,
+        handler: () => handleCopyImage()
+      },
+      {
+        key: 's',
+        description: 'Copy source to clipboard',
+        ignoreInputElements: true,
+        preventDefault: true,
+        isEnabled: () => !isEditorFocused && !isRenaming && !!diagram,
+        handler: () => handleCopySource()
       },
       // Zoom controls
       {
@@ -353,11 +397,10 @@ export function App() {
     }
     
     return baseShortcuts;
-  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram, isPenToolEnabled, isDrawingMode, handleSelectDiagram]);
+  }, [isHistoryCollapsed, isEditCollapsed, isEditorFocused, isRenaming, isDarkMode, toggleTheme, trackThemeChanged, navigateToNextDiagram, navigateToPreviousDiagram, isPenToolEnabled, isDrawingMode, handleSelectDiagram, diagram, handleCopyImage, handleCopySource]);
 
   useKeyboardShortcuts(shortcuts);
   usePreventBrowserZoom();
-
 
   // Create callback for diagram onFitToScreen
   const handleDiagramFitToScreen = useCallback((isAutoResize?: boolean) => {
@@ -432,12 +475,10 @@ export function App() {
           onMouseUp={isPenToolEnabled && isDrawingMode ? undefined : handleMouseUp}
           onMouseLeave={isPenToolEnabled && isDrawingMode ? undefined : handleMouseLeave}
         >
-          <DiagramContextMenu>
-            <DiagramRenderer
-              ref={previewRef}
-              onFitToScreen={handleDiagramFitToScreen}
-            />
-          </DiagramContextMenu>
+          <DiagramRenderer
+            ref={previewRef}
+            onFitToScreen={handleDiagramFitToScreen}
+          />
           {isPenToolEnabled && (
             <DrawingCanvas
               isDrawingMode={isDrawingMode}

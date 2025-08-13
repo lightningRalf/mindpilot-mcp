@@ -1,4 +1,4 @@
-import { MoreVertical, Download, Trash2, Edit, FileText, FileImage } from 'lucide-react';
+import { MoreVertical, Download, Trash2, Edit, FileText, FileImage, FileCode } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,7 +52,7 @@ export function DiagramItem({
   onEditingChange,
 }: DiagramItemProps) {
   const inlineEditRef = useRef<InlineEditRef>(null);
-  const itemRef = useRef<HTMLButtonElement>(null);
+  const itemRef = useRef<HTMLDivElement>(null);
 
   // Scroll into view when active and shouldScrollIntoView is true
   useEffect(() => {
@@ -70,11 +70,20 @@ export function DiagramItem({
   };
 
   return (
-    <button
+    <div
       ref={itemRef}
       key={entry.id}
+      role="button"
+      tabIndex={0}
       onClick={() => onSelect(entry)}
-      className={`w-full text-left p-2 rounded transition-colors border-l-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
+      onKeyDown={(e) => {
+        // Allow Enter/Space to select like a button
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(entry);
+        }
+      }}
+      className={`w-full text-left p-2 rounded transition-colors border-l-2 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
         isActive
           ? isDarkMode
             ? 'bg-orange-500/20 border-orange-500'
@@ -129,8 +138,8 @@ export function DiagramItem({
                   handleRename();
                 }}
                 className={isDarkMode 
-                  ? "hover:bg-neutral-700 focus:bg-neutral-700" 
-                  : "hover:bg-neutral-100 focus:bg-neutral-100"
+                  ? "hover:bg-orange-500/10 focus:bg-orange-500/10" 
+                  : "hover:bg-orange-50 focus:bg-orange-50"
                 }
               >
                 <Edit className="mr-2 h-4 w-4" />
@@ -139,8 +148,8 @@ export function DiagramItem({
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger
                   className={isDarkMode 
-                    ? "hover:bg-neutral-700 focus:bg-neutral-700" 
-                    : "hover:bg-neutral-100 focus:bg-neutral-100"
+                    ? "hover:bg-orange-500/10 focus:bg-orange-500/10 data-[state=open]:bg-orange-500/10" 
+                    : "hover:bg-orange-50 focus:bg-orange-50 data-[state=open]:bg-orange-50"
                   }
                 >
                   <Download className="mr-2 h-4 w-4" />
@@ -159,12 +168,12 @@ export function DiagramItem({
                       setOpenDropdownId(null);
                     }}
                     className={isDarkMode 
-                      ? "hover:bg-neutral-700 focus:bg-neutral-700" 
-                      : "hover:bg-neutral-100 focus:bg-neutral-100"
+                      ? "hover:bg-orange-500/10 focus:bg-orange-500/10" 
+                      : "hover:bg-orange-50 focus:bg-orange-50"
                     }
                   >
                     <FileImage className="mr-2 h-4 w-4" />
-                    Export as PNG
+                    Export PNG
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={(e) => {
@@ -173,12 +182,12 @@ export function DiagramItem({
                       setOpenDropdownId(null);
                     }}
                     className={isDarkMode 
-                      ? "hover:bg-neutral-700 focus:bg-neutral-700" 
-                      : "hover:bg-neutral-100 focus:bg-neutral-100"
+                      ? "hover:bg-orange-500/10 focus:bg-orange-500/10" 
+                      : "hover:bg-orange-50 focus:bg-orange-50"
                     }
                   >
-                    <FileImage className="mr-2 h-4 w-4" />
-                    Export as SVG
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export SVG
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={(e) => {
@@ -187,12 +196,12 @@ export function DiagramItem({
                       setOpenDropdownId(null);
                     }}
                     className={isDarkMode 
-                      ? "hover:bg-neutral-700 focus:bg-neutral-700" 
-                      : "hover:bg-neutral-100 focus:bg-neutral-100"
+                      ? "hover:bg-orange-500/10 focus:bg-orange-500/10" 
+                      : "hover:bg-orange-50 focus:bg-orange-50"
                     }
                   >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Export as Mermaid
+                    <FileCode className="mr-2 h-4 w-4" />
+                    Export Source
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -214,6 +223,6 @@ export function DiagramItem({
           </DropdownMenu>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
