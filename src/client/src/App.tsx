@@ -414,8 +414,7 @@ export function App() {
         } : undefined}
       />
 
-      <DiagramContextMenu>
-        <PanZoomContainer
+      <PanZoomContainer
           ref={containerRef}
           zoom={zoom}
           pan={pan}
@@ -433,10 +432,12 @@ export function App() {
           onMouseUp={isPenToolEnabled && isDrawingMode ? undefined : handleMouseUp}
           onMouseLeave={isPenToolEnabled && isDrawingMode ? undefined : handleMouseLeave}
         >
-          <DiagramRenderer
-            ref={previewRef}
-            onFitToScreen={handleDiagramFitToScreen}
-          />
+          <DiagramContextMenu>
+            <DiagramRenderer
+              ref={previewRef}
+              onFitToScreen={handleDiagramFitToScreen}
+            />
+          </DiagramContextMenu>
           {isPenToolEnabled && (
             <DrawingCanvas
               isDrawingMode={isDrawingMode}
@@ -447,7 +448,6 @@ export function App() {
             />
           )}
         </PanZoomContainer>
-      </DiagramContextMenu>
     </div>
   );
 

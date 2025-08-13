@@ -65,7 +65,7 @@ export function DiagramContextMenu({ children }: DiagramContextMenuProps) {
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="w-full h-full" asChild>
+      <ContextMenuTrigger asChild>
         <div>
           {children}
         </div>
