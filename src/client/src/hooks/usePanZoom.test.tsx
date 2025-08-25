@@ -1,6 +1,6 @@
 import { useEffect, useRef, MouseEvent as ReactMouseEvent } from 'react'
 import ReactDOM from 'react-dom/client'
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act } from '@testing-library/react'
 import { usePanZoom } from './usePanZoom'
 

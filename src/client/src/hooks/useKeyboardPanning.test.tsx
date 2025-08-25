@@ -1,40 +1,7 @@
-import { useRef } from 'react'
 import ReactDOM from 'react-dom/client'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import { useKeyboardPanning } from './useKeyboardPanning'
-
-interface TestAPI {
-  isMoving: boolean
-  velocity: { x: number; y: number }
-  panHistory: Array<{ dx: number; dy: number }>
-}
-
-function TestComponent({
-  onReady,
-  options = {}
-}: {
-  onReady: (api: TestAPI) => void
-  options?: Parameters<typeof useKeyboardPanning>[1]
-}) {
-  const panHistory = useRef<Array<{ dx: number; dy: number }>>([])
-  
-  const handlePan = (dx: number, dy: number) => {
-    panHistory.current.push({ dx, dy })
-  }
-
-  const { isMoving, velocity } = useKeyboardPanning(handlePan, options)
-
-  useRef(() => {
-    onReady({
-      isMoving,
-      velocity,
-      panHistory: panHistory.current
-    })
-  })
-
-  return <div data-testid="test-component">Test Component</div>
-}
 
 describe('useKeyboardPanning', () => {
   let host: HTMLElement
