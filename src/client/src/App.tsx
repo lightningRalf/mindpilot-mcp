@@ -52,6 +52,7 @@ export function App() {
     handleZoomIn,
     handleZoomOut,
     handleFitToScreen,
+    handleKeyPan,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
@@ -247,6 +248,7 @@ export function App() {
 
   // Keyboard shortcuts
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
+    const panStep = 50;
     const baseShortcuts: KeyboardShortcut[] = [
       // Prevent Ctrl/Cmd+A from selecting all page elements (except in Monaco editor)
       {
@@ -324,20 +326,49 @@ export function App() {
         isEnabled: () => !isEditorFocused && !isRenaming && !!diagram,
         handler: () => handleCopySource()
       },
-      // Zoom controls
+      // Zoom controls (using PageUp/PageDown)
       {
-        key: 'ArrowUp',
+        key: 'PageUp',
         description: 'Zoom in',
         ignoreInputElements: true,
         isEnabled: () => !isEditorFocused && !isRenaming,
         handler: () => handleZoomIn()
       },
       {
-        key: 'ArrowDown',
+        key: 'PageDown',
         description: 'Zoom out',
         ignoreInputElements: true,
         isEnabled: () => !isEditorFocused && !isRenaming,
         handler: () => handleZoomOut()
+      },
+      // Pan controls (Arrow keys)
+      {
+        key: 'ArrowUp',
+        description: 'Pan up',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleKeyPan(0, panStep)
+      },
+      {
+        key: 'ArrowDown',
+        description: 'Pan down',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleKeyPan(0, -panStep)
+      },
+      {
+        key: 'ArrowLeft',
+        description: 'Pan left',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleKeyPan(panStep, 0)
+      },
+      {
+        key: 'ArrowRight',
+        description: 'Pan right',
+        ignoreInputElements: true,
+        isEnabled: () => !isEditorFocused && !isRenaming,
+        handler: () => handleKeyPan(-panStep, 0)
       },
       {
         key: 'f',
@@ -354,7 +385,7 @@ export function App() {
         isEnabled: () => !isEditorFocused && !isRenaming,
         handler: () => setIsDrawingMode(!isDrawingMode)
       }] : []),
-      // Navigation
+      // Navigation (Ctrl/Cmd + ArrowLeft/ArrowRight)
       {
         key: 'ArrowLeft',
         ctrl: true,

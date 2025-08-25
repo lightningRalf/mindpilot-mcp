@@ -26,6 +26,7 @@ export interface PanZoomHandlers {
   handleZoomOut: () => void;
   handleZoomReset: () => void;
   handleFitToScreen: (isAutoResize?: boolean) => void;
+  handleKeyPan: (dx: number, dy: number) => void;
   handleMouseDown: (e: MouseEvent) => void;
   handleMouseMove: (e: MouseEvent) => void;
   handleMouseUp: () => void;
@@ -145,6 +146,12 @@ export function usePanZoom(
     setIsPanning(false);
   }, []);
 
+  // Keyboard-based panning handler (dx, dy in pixels)
+  const handleKeyPan = useCallback((dx: number, dy: number) => {
+    if (!opts.enablePan) return;
+    setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+  }, [opts.enablePan]);
+
   // Wheel handler for zoom
   useEffect(() => {
     const container = containerRef.current;
@@ -217,6 +224,7 @@ export function usePanZoom(
     handleZoomOut,
     handleZoomReset,
     handleFitToScreen,
+    handleKeyPan,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
