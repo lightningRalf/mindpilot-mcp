@@ -302,8 +302,24 @@ export function App() {
         handler: () => {
           if (isEditCollapsed) {
             editPanelRef.current?.expand();
+            // Auto-focus the editor after expanding
+            setTimeout(() => {
+              editorRef.current?.focus();
+            }, 100); // Small delay to ensure panel is fully expanded
           } else {
             editPanelRef.current?.collapse();
+          }
+        }
+      },
+      // ESC to blur editor
+      {
+        key: 'Escape',
+        description: 'Blur editor (allows E to close editor)',
+        isEnabled: () => isEditorFocused,
+        handler: () => {
+          // Blur the currently focused element (the Monaco editor)
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
           }
         }
       },
