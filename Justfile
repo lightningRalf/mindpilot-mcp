@@ -11,20 +11,20 @@ vite_pid := "/tmp/mindpilot-vite.pid"
 
 help:
   @echo "Usage:"
-  @echo "  just restart [port=4000]      # Stop any running instances and start local HTTP server"
-  @echo "  just start [port=4000]        # Start local HTTP server"
+  @echo "  just restart                  # Stop any running instances and start local HTTP server"
+  @echo "  just start                    # Start local HTTP server"
   @echo "  just stop                     # Stop HTTP/MCP processes"
-  @echo "  just status [port=4000]       # Show processes listening on port and related nodes"
+  @echo "  just status                   # Show processes listening on port and related nodes"
   @echo "  just logs                     # Tail server log"
   @echo "  just build                    # Build client + server (npm run build)"
-  @echo "  just dev [port=4000]          # Start dev HTTP (tsx) + Vite (5173) in background"
+  @echo "  just dev                      # Start dev HTTP (tsx) + Vite (5173) in background"
   @echo "  just dev-stop                 # Stop dev HTTP + Vite"
 
 build:
   npm run build
 
 # Start the local HTTP server from dist/
-start port={{port}}:
+start:
   if [ ! -f "{{server_js}}" ]; then \
     echo "dist HTTP server missing, building..."; \
     npm run build; \
@@ -57,12 +57,12 @@ stop:
   echo "Stopped anything resembling mindpilot servers."
 
 # Restart = stop, then start
-restart port={{port}}:
+restart:
   just stop
-  just start port={{port}}
+  just start
 
 # Show current process and port usage
-status port={{port}}:
+status:
   echo "Processes bound to :{{port}}:";
   if command -v ss >/dev/null 2>&1; then ss -ltnp | grep -E ":{{port}}\b" || true; fi
   echo
@@ -75,7 +75,7 @@ logs:
   tail -n 200 -f "{{log_file}}"
 
 # Start development servers in background with logs
-dev port={{port}}:
+dev:
   echo "Starting dev HTTP server on :{{port}} (tsx) -> src/http/server.ts";
   nohup env NODE_ENV=development tsx "{{justfile_directory()}}/src/http/server.ts" --port "{{port}}" >> "{{dev_http_log}}" 2>&1 &
   echo $! > "{{dev_http_pid}}"
