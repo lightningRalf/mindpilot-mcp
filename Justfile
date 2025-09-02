@@ -31,8 +31,7 @@ start:
     npm run build; \
   fi
   echo "Starting HTTP server on :{{port}} -> {{server_js}}";
-  nohup node "{{server_js}}" --port "{{port}}" --disable-analytics >> "{{log_file}}" 2>&1 &
-  echo $! > /tmp/mindpilot-http.pid
+  nohup node "{{server_js}}" --port "{{port}}" --disable-analytics >> "{{log_file}}" 2>&1 & echo $! > /tmp/mindpilot-http.pid
   sleep 0.5
   echo "Started. Log: {{log_file}}"
 
@@ -78,12 +77,10 @@ logs:
 # Start development servers in background with logs
 dev:
   echo "Starting dev HTTP server on :{{dev_port}} (tsx) -> src/http/server.ts";
-  nohup env NODE_ENV=development tsx "{{justfile_directory()}}/src/http/server.ts" --port "{{dev_port}}" >> "{{dev_http_log}}" 2>&1 &
-  echo $! > "{{dev_http_pid}}"
+  nohup env NODE_ENV=development tsx "{{justfile_directory()}}/src/http/server.ts" --port "{{dev_port}}" >> "{{dev_http_log}}" 2>&1 & echo $! > "{{dev_http_pid}}"
   sleep 0.5
   echo "Starting Vite dev server on :5173 -> src/client";
-  cd "{{justfile_directory()}}/src/client" && nohup env MINDPILOT_API_PORT={{dev_port}} vite >> "{{vite_log}}" 2>&1 &
-  echo $! > "{{vite_pid}}"
+  cd "{{justfile_directory()}}/src/client" && nohup env MINDPILOT_API_PORT={{dev_port}} vite >> "{{vite_log}}" 2>&1 & echo $! > "{{vite_pid}}"
   echo "Dev servers started. Logs: HTTP={{dev_http_log}} Vite={{vite_log}}"
 
 # Stop development servers
