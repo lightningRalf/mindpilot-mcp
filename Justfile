@@ -2,6 +2,7 @@ set shell := ["bash", "-euxo", "pipefail", "-c"]
 
 # Defaults
 port := "4000"
+dev_port := "4001"
 log_file := "/tmp/mindpilot-http.log"
 server_js := "{{ justfile_directory() }}/dist/http/server.js"
 dev_http_log := "/tmp/mindpilot-http-dev.log"
@@ -17,7 +18,7 @@ help:
   @echo "  just status                   # Show processes listening on port and related nodes"
   @echo "  just logs                     # Tail server log"
   @echo "  just build                    # Build client + server (npm run build)"
-  @echo "  just dev                      # Start dev HTTP (tsx) + Vite (5173) in background"
+  @echo "  just dev                      # Start dev HTTP (:4001) + Vite (:5173)"
   @echo "  just dev-stop                 # Stop dev HTTP + Vite"
 
 build:
@@ -76,12 +77,12 @@ logs:
 
 # Start development servers in background with logs
 dev:
-  echo "Starting dev HTTP server on :{{port}} (tsx) -> src/http/server.ts";
-  nohup env NODE_ENV=development tsx "{{justfile_directory()}}/src/http/server.ts" --port "{{port}}" >> "{{dev_http_log}}" 2>&1 &
+  echo "Starting dev HTTP server on :{{dev_port}} (tsx) -> src/http/server.ts";
+  nohup env NODE_ENV=development tsx "{{justfile_directory()}}/src/http/server.ts" --port "{{dev_port}}" >> "{{dev_http_log}}" 2>&1 &
   echo $! > "{{dev_http_pid}}"
   sleep 0.5
   echo "Starting Vite dev server on :5173 -> src/client";
-  cd "{{justfile_directory()}}/src/client" && nohup vite >> "{{vite_log}}" 2>&1 &
+  cd "{{justfile_directory()}}/src/client" && nohup env MINDPILOT_API_PORT={{dev_port}} vite >> "{{vite_log}}" 2>&1 &
   echo $! > "{{vite_pid}}"
   echo "Dev servers started. Logs: HTTP={{dev_http_log}} Vite={{vite_log}}"
 
@@ -95,6 +96,10 @@ dev-stop:
   pkill -f '/src/client.*vite' 2>/dev/null || true
   if command -v ss >/dev/null 2>&1; then \
     PIDS=$(ss -ltnp 2>/dev/null | awk '$4 ~ /:5173$/ { for (i=1;i<=NF;i++) if ($i ~ /pid=/) { match($i, /pid=([0-9]+)/, a); if (a[1]) print a[1] } }' | sort -u); \
+    if [ -n "$PIDS" ]; then echo "$PIDS" | xargs -r kill -9 || true; fi; \
+  fi
+  if command -v ss >/dev/null 2>&1; then \
+    PIDS=$(ss -ltnp 2>/dev/null | awk '$4 ~ /:{{dev_port}}$/ { for (i=1;i<=NF;i++) if ($i ~ /pid=/) { match($i, /pid=([0-9]+)/, a); if (a[1]) print a[1] } }' | sort -u); \
     if [ -n "$PIDS" ]; then echo "$PIDS" | xargs -r kill -9 || true; fi; \
   fi
   echo "Stopped dev HTTP and Vite"
