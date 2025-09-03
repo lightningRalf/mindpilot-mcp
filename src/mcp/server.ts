@@ -249,10 +249,7 @@ export class MindpilotMCPClient {
     // Start the HTTP server as a separate process
     const args = [httpServerPath, '--port', this.httpPort.toString()];
 
-    // Pass debug flag to server if enabled
-    if (isDebugMode) {
-      args.push("--debug");
-    }
+    // Debug mode is communicated via MINDPILOT_DEBUG env; no CLI flag needed
 
     // Pass disable-analytics flag to server if enabled
     if (this.disableAnalytics) {
@@ -265,7 +262,9 @@ export class MindpilotMCPClient {
       args.push(this.dataPath);
     }
 
-    const serverProcess = spawn("node", args, {
+    // Use the same Node executable that launched this process to
+    // avoid PATH issues inside MCP hosts or GUI environments.
+    const serverProcess = spawn(process.execPath, args, {
       detached: true,
       stdio: "ignore",
       env: {
