@@ -17,7 +17,7 @@ import {
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import path from "path";
-import { RenderResult, ServerStatus } from "../shared/types.js";
+import { RenderResult, ServerStatus, ExportResult } from "../shared/types.js";
 import { isPortInUse } from "../http/server.js";
 import { mcpLogger as logger } from "../shared/logger.js";
 import { StateMachine, State, Event, StateContext } from "./stateMachine.js";
@@ -143,6 +143,46 @@ export class MindpilotMCPClient {
           },
         },
         {
+          name: "export_diagram",
+          description: "Export a Mermaid diagram to PNG format for external services (Discord, Slack, etc.). Returns base64 PNG data and edit URL.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              diagram: {
+                type: "string",
+                description: `Mermaid diagram syntax. MUST start with diagram type (graph TD, flowchart LR, sequenceDiagram, etc). Node IDs cannot have spaces. Use quotes for labels with spaces/special chars. Use this colors which work well for both light and dark mode: ${colorPrompt}`,
+              },
+              title: {
+                type: "string",
+                description: "Title for the diagram (max 50 characters)",
+                maxLength: 50,
+              },
+              background: {
+                type: "string",
+                description: "Background color",
+                default: "white",
+              },
+              width: {
+                type: "number",
+                description: "PNG width in pixels",
+                default: 1920,
+              },
+              height: {
+                type: "number",
+                description: "PNG height in pixels",
+                default: 1080,
+              },
+              format: {
+                type: "string",
+                description: "Output format",
+                enum: ["base64", "buffer"],
+                default: "base64",
+              },
+            },
+            required: ["diagram", "title"],
+          },
+        },
+        {
           name: "open_ui",
           description: "Open the web-based user interface",
           inputSchema: {
@@ -178,6 +218,24 @@ export class MindpilotMCPClient {
                 {
                   type: "text",
                   text: JSON.stringify(renderResult, null, 2),
+                },
+              ],
+            };
+
+          case "export_diagram":
+            const exportResult = await this.exportDiagram(
+              args?.diagram as string,
+              args?.title as string,
+              args?.background as string,
+              args?.width as number,
+              args?.height as number,
+              args?.format as string,
+            );
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(exportResult, null, 2),
                 },
               ],
             };
@@ -315,6 +373,55 @@ export class MindpilotMCPClient {
         diagram,
         error:
           error instanceof Error ? error.message : "Failed to render diagram",
+      };
+    }
+  }
+
+  private async exportDiagram(
+    diagram: string,
+    title: string,
+    background?: string,
+    width?: number,
+    height?: number,
+    format?: string,
+  ): Promise<ExportResult> {
+    // Use HTTP API endpoint for PNG export
+    try {
+      const response = await fetch(
+        `http://localhost:${this.httpPort}/api/export`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            diagram,
+            title,
+            background: background || "white",
+            width: width || 1920,
+            height: height || 1080,
+            format: format || "base64",
+            clientId: this.clientId,
+            clientName: this.clientName,
+            workingDir: process.cwd(),
+          }),
+          signal: this.getAbortSignal(),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = (await response.json()) as ExportResult;
+
+      return result;
+    } catch (error) {
+      return {
+        type: "error",
+        diagram,
+        error:
+          error instanceof Error ? error.message : "Failed to export diagram",
       };
     }
   }

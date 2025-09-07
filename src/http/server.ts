@@ -15,9 +15,11 @@ import { httpLogger as logger } from "../shared/logger.js";
 import {
   RenderResult,
   ServerStatus,
+  ExportResult,
 } from "../shared/types.js";
 import { renderMermaid } from "../shared/renderer.js";
 import { validateMermaidSyntax } from "../shared/validator.js";
+import { exportToPNG } from "../shared/pngExporter.js";
 import { HistoryService } from "../shared/historyService.js";
 import { detectGitRepo } from "../shared/gitRepoDetector.js";
 
@@ -191,6 +193,63 @@ export class SingletonHTTPServer {
         const { diagram } = request.body as any;
         const result = await validateMermaidSyntax(diagram);
         return reply.send(result);
+      },
+    );
+
+    // PNG Export endpoint
+    this.fastify.post(
+      "/api/export",
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const { 
+            diagram, 
+            title, 
+            background, 
+            width, 
+            height, 
+            format, 
+            clientId, 
+            clientName, 
+            workingDir 
+          } = request.body as any;
+
+          // Update MCP activity
+          this.lastMcpActivity = new Date();
+
+          // Save to history if successful and get the diagram ID
+          let diagramId: string | undefined;
+          if (workingDir && title) {
+            try {
+              const collection = await detectGitRepo(workingDir);
+              const savedEntry = await this.historyService.saveDiagram(diagram, title, collection);
+              diagramId = savedEntry.id;
+              logger.info(`Saved diagram "${title}" with ID ${diagramId} to collection: ${collection || 'uncollected'}`);
+            } catch (error) {
+              logger.error("Failed to save diagram to history", { error });
+              // Don't fail the export if history save fails
+            }
+          }
+
+          const result = await exportToPNG(
+            diagram,
+            title,
+            background,
+            width,
+            height,
+            format,
+            diagramId,
+            this.port
+          );
+
+          return reply.send(result);
+        } catch (error) {
+          const errorResult: ExportResult = {
+            type: "error",
+            diagram: "",
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+          return reply.code(500).send(errorResult);
+        }
       },
     );
 
