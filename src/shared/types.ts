@@ -7,6 +7,17 @@ export interface RenderResult {
   background?: string;
 }
 
+export interface ExportResult {
+  type: "success" | "error";
+  diagram: string;
+  pngData?: string;  // base64 encoded PNG data
+  editUrl?: string;  // localhost URL for editing the diagram
+  error?: string;
+  details?: string;
+  mimeType?: string;
+  size?: number;  // file size in bytes
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors?: string[];
