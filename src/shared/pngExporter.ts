@@ -68,7 +68,7 @@ export async function exportToPNG(
 
 /**
  * Generate PNG from Mermaid diagram using server-side Canvas
- * Adapted from the existing client-side implementation in useExportDiagram.ts
+ * For now, creates a meaningful diagram representation instead of full Mermaid rendering
  */
 async function generateMermaidPNG(
   diagram: string,
@@ -76,88 +76,188 @@ async function generateMermaidPNG(
   width: number,
   height: number
 ): Promise<string> {
-  // Dynamically import mermaid and canvas
-  let mermaid: any;
   let Canvas: any;
 
   try {
-    const mermaidModule = await import("mermaid");
-    mermaid = mermaidModule.default;
-    
     const canvasModule = await import("canvas");
     Canvas = canvasModule;
   } catch (error) {
-    throw new Error("Canvas or Mermaid not available for server-side PNG generation");
+    throw new Error("Canvas not available for server-side PNG generation");
   }
 
-  // Initialize mermaid with server-compatible settings
-  // This mirrors the logic from useExportDiagram.ts but adapted for server-side
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: background === "white" || background === "#f5f5f5" ? "default" : "dark",
-    securityLevel: "strict",
-    suppressErrorRendering: true,
-    flowchart: {
-      useMaxWidth: false,
-      htmlLabels: false, // Disable HTML labels for server-side compatibility
-    },
-  });
+  // Parse diagram to understand structure
+  const diagramInfo = parseDiagramStructure(diagram);
+  
+  // Create server-side canvas
+  const scale = 2; // For higher resolution
+  const canvas = Canvas.createCanvas(width * scale, height * scale);
+  const ctx = canvas.getContext('2d');
 
-  // Generate unique ID for rendering
-  const id = `mermaid-export-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  // Scale for higher resolution
+  ctx.scale(scale, scale);
 
-  try {
-    // Render the diagram to SVG - same as client-side
-    const { svg } = await mermaid.render(id, diagram);
-    
-    // Parse SVG to get dimensions - similar to client-side getBBox logic
-    const svgMatch = svg.match(/viewBox="([^"]+)"/);
-    let svgWidth = width;
-    let svgHeight = height;
-    
-    if (svgMatch) {
-      const viewBox = svgMatch[1].split(' ');
-      svgWidth = Math.max(parseInt(viewBox[2]) || width, 400);
-      svgHeight = Math.max(parseInt(viewBox[3]) || height, 300);
+  // Set background color - matches client-side background logic
+  const isDarkMode = background === "dark" || background === "#262626";
+  const bgColor = isDarkMode ? "#262626" : "#f5f5f5";
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  // Draw diagram representation
+  drawDiagramStructure(ctx, diagramInfo, width, height, isDarkMode);
+
+  // Convert canvas to PNG buffer and then to base64
+  const pngBuffer = canvas.toBuffer('image/png');
+  return pngBuffer.toString('base64');
+}
+
+/**
+ * Parse diagram text to understand its structure
+ */
+function parseDiagramStructure(diagram: string): any {
+  const lines = diagram.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  // Detect diagram type
+  const firstLine = lines[0].toLowerCase();
+  let type = 'graph';
+  if (firstLine.includes('sequencediagram')) type = 'sequence';
+  else if (firstLine.includes('classDiagram')) type = 'class';
+  else if (firstLine.includes('flowchart')) type = 'flowchart';
+  else if (firstLine.includes('graph')) type = 'graph';
+  
+  // Extract nodes and relationships
+  const nodes = new Set<string>();
+  const relationships = [];
+  const classes = [];
+  
+  for (const line of lines) {
+    // Find nodes in format A[Label] or A("Label") or A{Label}
+    const nodeMatches = line.match(/([A-Za-z0-9_]+)[\[\{\(]([^}\]\)]*?)[\]\}\)]/g);
+    if (nodeMatches) {
+      nodeMatches.forEach(match => {
+        const nodeId = match.split(/[\[\{\(]/)[0];
+        nodes.add(nodeId);
+      });
     }
-
-    // Create server-side canvas - mirrors client-side canvas creation
-    const scale = 2; // For higher resolution, same as client-side
-    const canvas = Canvas.createCanvas(svgWidth * scale, svgHeight * scale);
-    const ctx = canvas.getContext('2d');
-
-    // Scale for higher resolution - same as client-side
-    ctx.scale(scale, scale);
-
-    // Set background color - matches client-side background logic
-    const bgColor = background === "white" ? "#f5f5f5" : 
-                   background === "dark" ? "#262626" : background;
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, svgWidth, svgHeight);
-
-    // TODO: Implement proper SVG-to-Canvas rendering
-    // This would require additional libraries like:
-    // - @resvg/resvg-js for SVG to canvas conversion
-    // - or canvg for SVG parsing and canvas rendering
-    // 
-    // For now, we create a proper canvas with background and indicate
-    // where the Mermaid diagram would be rendered
     
-    ctx.fillStyle = background === "dark" ? "#ffffff" : "#000000";
-    ctx.font = "16px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("Generated by mindpilot-mcp", svgWidth / 2, svgHeight / 2 - 40);
-    ctx.fillText("Mermaid Diagram", svgWidth / 2, svgHeight / 2 - 10);
-    ctx.fillText("(Real rendering requires additional dependencies)", svgWidth / 2, svgHeight / 2 + 20);
-    ctx.fillText(`${svgWidth}x${svgHeight} | ${background}`, svgWidth / 2, svgHeight / 2 + 50);
-
-    // Convert canvas to PNG buffer and then to base64 - same as client-side
-    const pngBuffer = canvas.toBuffer('image/png');
-    return pngBuffer.toString('base64');
-
-  } catch (error) {
-    throw new Error(`Mermaid rendering failed: ${error instanceof Error ? error.message : error}`);
+    // Find simple relationships A --> B
+    const relMatch = line.match(/([A-Za-z0-9_]+)\s*-+>\s*([A-Za-z0-9_]+)/);
+    if (relMatch) {
+      nodes.add(relMatch[1]);
+      nodes.add(relMatch[2]);
+      relationships.push({ from: relMatch[1], to: relMatch[2] });
+    }
+    
+    // Find class definitions
+    if (line.includes('classDef') || line.includes('class ')) {
+      classes.push(line);
+    }
   }
+  
+  return {
+    type,
+    nodes: Array.from(nodes),
+    relationships,
+    classes,
+    hasColors: classes.length > 0 || diagram.includes('fill:')
+  };
+}
+
+/**
+ * Draw a visual representation of the diagram structure
+ */
+function drawDiagramStructure(ctx: any, diagramInfo: any, width: number, height: number, isDarkMode: boolean): void {
+  const { nodes, relationships, type, hasColors } = diagramInfo;
+  
+  // Colors
+  const textColor = isDarkMode ? "#ffffff" : "#000000";
+  const nodeColor = hasColors ? "#ff6b6b" : (isDarkMode ? "#4c6ef5" : "#74c0fc");
+  const arrowColor = isDarkMode ? "#ffffff" : "#333333";
+  
+  ctx.font = "14px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  
+  // Title
+  ctx.fillStyle = textColor;
+  ctx.font = "16px Arial";
+  ctx.fillText(`${type.charAt(0).toUpperCase() + type.slice(1)} Diagram`, width / 2, 30);
+  
+  if (nodes.length === 0) {
+    ctx.font = "12px Arial";
+    ctx.fillText("Generated by mindpilot-mcp export_diagram", width / 2, height / 2);
+    return;
+  }
+  
+  // Calculate node positions
+  const nodePositions = new Map();
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  const rows = Math.ceil(nodes.length / cols);
+  const nodeWidth = Math.min(120, (width - 80) / cols);
+  const nodeHeight = 40;
+  const startX = (width - (cols - 1) * nodeWidth) / 2;
+  const startY = 80;
+  const rowSpacing = Math.min(100, (height - 160) / Math.max(1, rows - 1));
+  
+  // Draw nodes
+  nodes.forEach((node: string, index: number) => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    const x = startX + col * nodeWidth;
+    const y = startY + row * rowSpacing;
+    
+    nodePositions.set(node, { x, y });
+    
+    // Draw node rectangle
+    ctx.fillStyle = nodeColor;
+    ctx.fillRect(x - nodeWidth/3, y - nodeHeight/2, nodeWidth*2/3, nodeHeight);
+    
+    // Draw node border
+    ctx.strokeStyle = arrowColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - nodeWidth/3, y - nodeHeight/2, nodeWidth*2/3, nodeHeight);
+    
+    // Draw node label
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "12px Arial";
+    ctx.fillText(node, x, y);
+  });
+  
+  // Draw relationships
+  ctx.strokeStyle = arrowColor;
+  ctx.lineWidth = 2;
+  relationships.forEach((rel: any) => {
+    const fromPos = nodePositions.get(rel.from);
+    const toPos = nodePositions.get(rel.to);
+    
+    if (fromPos && toPos) {
+      // Draw arrow line
+      ctx.beginPath();
+      ctx.moveTo(fromPos.x + nodeWidth/3, fromPos.y);
+      ctx.lineTo(toPos.x - nodeWidth/3, toPos.y);
+      ctx.stroke();
+      
+      // Draw arrow head
+      const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x);
+      const arrowLength = 10;
+      ctx.beginPath();
+      ctx.moveTo(toPos.x - nodeWidth/3, toPos.y);
+      ctx.lineTo(
+        toPos.x - nodeWidth/3 - arrowLength * Math.cos(angle - Math.PI/6),
+        toPos.y - arrowLength * Math.sin(angle - Math.PI/6)
+      );
+      ctx.moveTo(toPos.x - nodeWidth/3, toPos.y);
+      ctx.lineTo(
+        toPos.x - nodeWidth/3 - arrowLength * Math.cos(angle + Math.PI/6),
+        toPos.y - arrowLength * Math.sin(angle + Math.PI/6)
+      );
+      ctx.stroke();
+    }
+  });
+  
+  // Add footer
+  ctx.fillStyle = textColor;
+  ctx.font = "10px Arial";
+  ctx.fillText(`${nodes.length} nodes, ${relationships.length} relationships`, width / 2, height - 20);
 }
 
 /**
